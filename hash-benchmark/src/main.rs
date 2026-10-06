@@ -3,32 +3,33 @@ use std::time::Instant;
 use std::fs::File;
 use std::io;
 use std::io::Read;
-const TAMANHO: usize = 1073741824;
-const TAMANHO_F64: f64 = TAMANHO as f64;
+const SIZE: usize = 1073741824;
+const SIZE_F64: f64 = SIZE as f64;
+const BENCHMARK_PATH: &str = "../benchmark-dd.bin";
 
 fn main() {
-    println!("{:?}", benchmark_leitor());
+    println!("{:?}", read_benchmark());
 }
 
-fn benchmark_hash() {
-    let mut dados: Vec<u8> = Vec::with_capacity(TAMANHO);
-    dados.resize(TAMANHO, 1);
-    let inicio = Instant::now();
-    let hash = Sha256::digest(dados);
-    let duracao = inicio.elapsed();
+fn hash_benchmark() {
+    let mut data: Vec<u8> = Vec::with_capacity(SIZE);
+    data.resize(SIZE, 1);
+    let start = Instant::now();
+    let hash = Sha256::digest(data);
+    let runtime = start.elapsed();
     print!("Hash: ");
-    for dado in hash {
-        print!("{:02x}", dado);
+    for data in hash {
+        print!("{:02x}", data);
     }
     println!();
-    println!("Tempo: {:?}", duracao);
-    let duracao_secs: f64 = duracao.as_secs_f64();
-    let throughput = (TAMANHO_F64 / 1024.0 / 1024.0) / duracao_secs;
+    println!("Runtime: {:?}", runtime);
+    let runtime_secs: f64 = runtime.as_secs_f64();
+    let throughput = (SIZE_F64 / 1024.0 / 1024.0) / runtime_secs;
     println!("Throughput: {:?} MiB/s", throughput);
 }
 
-fn benchmark_leitor() -> io::Result<usize> {
-    let mut file = File::open("../benchmark-dd.bin")?;
+fn read_benchmark() -> io::Result<usize> {
+    let mut file = File::open(BENCHMARK_PATH)?;
     let mut buffer = [0u8; 4096];
     let bytes = file.read(&mut buffer)?;
     Ok(bytes)
