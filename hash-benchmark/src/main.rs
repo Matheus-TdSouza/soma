@@ -6,13 +6,29 @@ use rand::prelude::*;
 const BENCHMARK_PATH: &str = "../benchmark.bin";
 
 fn main() -> io::Result<()> {
-    let size = parse_size("1G")
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid size"))?;
-    generate(BENCHMARK_PATH, size)?;
-    println!("File generated with {} bytes", size);
-    println!("{:?}", read_benchmark());
-    hash_benchmark(size);
-    Ok(())
+    let args: Vec<String> = std::env::args().collect();
+    let size = args.get(2).and_then(|s| parse_size(s));
+    match args.get(1).map(String::as_str) {
+        Some("generate") => {
+            let size = size.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid size"))?;
+            generate(BENCHMARK_PATH, size)?;
+            println!("File generated with {} bytes", size);
+            Ok(())
+        }
+        Some("hash") => {
+            let size = size.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid size"))?;
+            hash_benchmark(size);
+            Ok(())
+        }
+        Some("read") => {
+            println!("{:?}", read_benchmark());
+            Ok(())
+        }
+        _ => {
+            eprintln!("usage: hash-benchmark generate <size> | hash <size> | read");
+            Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid input"))
+        }
+    }
 }
 
 fn parse_size(s: &str) -> Option<usize> {
