@@ -3,12 +3,16 @@ use std::time::Instant;
 use std::fs::File;
 use std::io::{self, Read, Write};
 use rand::prelude::*;
-const SIZE: usize = 1073741824;
-const SIZE_F64: f64 = SIZE as f64;
 const BENCHMARK_PATH: &str = "../benchmark.bin";
 
-fn main() {
+fn main() -> io::Result<()> {
+    let size = parse_size("1G")
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid size"))?;
+    generate(BENCHMARK_PATH, size)?;
+    println!("File generated with {} bytes", size);
     println!("{:?}", read_benchmark());
+    hash_benchmark(size);
+    Ok(())
 }
 
 fn parse_size(s: &str) -> Option<usize> {
@@ -39,9 +43,10 @@ fn generate(path: &str, total: usize) -> io::Result<()> {
     Ok(())
 }
 
-fn hash_benchmark() {
-    let mut data: Vec<u8> = Vec::with_capacity(SIZE);
-    data.resize(SIZE, 1);
+fn hash_benchmark(size: usize) {
+    let size_f64 = size as f64;
+    let mut data: Vec<u8> = Vec::with_capacity(size);
+    data.resize(size, 1);
     let start = Instant::now();
     let hash = Sha256::digest(data);
     let runtime = start.elapsed();
@@ -51,8 +56,8 @@ fn hash_benchmark() {
     }
     println!();
     println!("Runtime: {:?}", runtime);
-    let runtime_secs: f64 = runtime.as_secs_f64();
-    let throughput = (SIZE_F64 / 1024.0 / 1024.0) / runtime_secs;
+    let runtime_secs = runtime.as_secs_f64();
+    let throughput = (size_f64 / 1024.0 / 1024.0) / runtime_secs;
     println!("Throughput: {:?} MiB/s", throughput);
 }
 
@@ -61,4 +66,107 @@ fn read_benchmark() -> io::Result<usize> {
     let mut buffer = [0u8; 4096];
     let bytes = file.read(&mut buffer)?;
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io;
+
+    fn generate_temp(name: &str, total: usize) -> io::Result<Vec<u8>> {
+        let path = std::env::temp_dir().join(name);
+        let path = path.to_str().unwrap();
+        generate(path, total)?;
+        let bytes = std::fs::read(path)?;
+        std::fs::remove_file(path)?;
+        Ok(bytes)
+    }
+
+    #[test]
+    fn parse_size_gigabytes() {
+        assert_eq!(parse_size("4G"), Some(4 << 30));
+    }
+
+    #[test]
+    fn parse_size_megabytes() {
+        assert_eq!(parse_size("512m"), Some(512 << 20));
+    }
+
+    #[test]
+    fn parse_size_kilobytes() {
+        assert_eq!(parse_size("256k"), Some(256 << 10));
+    }
+
+    #[test]
+    fn parse_size_zerobytes() {
+        assert_eq!(parse_size("0K"), Some(0));
+    }
+
+    #[test]
+    fn parse_size_rejects_invalid_unit() {
+        assert_eq!(parse_size("4é"), None);
+    }
+
+    #[test]
+    fn parse_size_rejects_num_only() {
+        assert_eq!(parse_size("4096"), None);
+    }
+
+    #[test]
+    fn parse_size_rejects_letter_only() {
+        assert_eq!(parse_size("G"), None);
+    }
+    
+    #[test]
+    fn parse_size_rejects_invalid_format() {
+        assert_eq!(parse_size("4GB"), None);
+    }
+
+    #[test]
+    fn parse_size_rejects_signed_format() {
+        assert_eq!(parse_size("-1G"), None);
+    }
+    
+    #[test]
+    fn parse_size_rejects_overflow() {
+        assert_eq!(parse_size("20000000000G"), None);
+    }
+
+    #[test]
+    fn parse_size_rejects_empty() {
+        assert_eq!(parse_size(""), None);
+    }
+
+    #[test]
+    fn generate_writes_exact_size() -> io::Result<()> {
+        let total = (8 << 20) + 1;
+        let bytes = generate_temp("soma_generate_exact.bin", total)?;
+        assert_eq!(bytes.len(), total);
+        Ok(())
+    }
+
+    #[test]
+    fn generate_writes_zerobytes() -> io::Result<()> {
+        let total = 0;
+        let bytes = generate_temp("soma_generate_zerobytes.bin", total)?;
+        assert_eq!(bytes.len(), total);
+        Ok(())
+    }
+
+    #[test]
+    fn generate_writes_small_size() -> io::Result<()> {
+        let total = 10;
+        let bytes = generate_temp("soma_generate_small_size.bin", total)?;
+        assert_eq!(bytes.len(), total);
+        Ok(())
+    }
+
+    #[test]
+    fn generate_writes_non_zero_content() -> io::Result<()> {
+        let total = 4096;
+        let bytes = generate_temp("soma_generate_non_zero.bin", total)?;
+        assert_eq!(bytes.len(), total);
+        assert!(bytes.iter().any(|&b| b != 0));
+        Ok(())
+    }
 }
