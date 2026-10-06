@@ -1,14 +1,42 @@
 use sha2::{Sha256, Digest};
 use std::time::Instant;
 use std::fs::File;
-use std::io;
-use std::io::Read;
+use std::io::{self, Read, Write};
+use rand::prelude::*;
 const SIZE: usize = 1073741824;
 const SIZE_F64: f64 = SIZE as f64;
-const BENCHMARK_PATH: &str = "../benchmark-dd.bin";
+const BENCHMARK_PATH: &str = "../benchmark.bin";
 
 fn main() {
     println!("{:?}", read_benchmark());
+}
+
+fn parse_size(s: &str) -> Option<usize> {
+    let i = s.len().checked_sub(1)?;
+    let (number, unit) = s.split_at_checked(i)?;
+    let number = number.parse::<usize>().ok()?;
+    let mult = match unit {
+        "K" | "k" => 1 << 10,
+        "M" | "m" => 1 << 20,
+        "G" | "g" => 1 << 30,
+        _ => return None,
+    };
+    number.checked_mul(mult)
+}
+
+fn generate(path: &str, total: usize) -> io::Result<()> {
+    let mut file = File::create(path)?;
+    let mut rng = rand::rng();
+    let mut buf = vec![0u8; 8 << 20];
+    let mut remaining = total;
+    while remaining > 0 {
+        let n = remaining.min(buf.len());
+        rng.fill_bytes(&mut buf[..n]);
+        file.write_all(&buf[..n])?;
+        remaining -= n;
+    }
+    file.sync_all()?;
+    Ok(())
 }
 
 fn hash_benchmark() {
