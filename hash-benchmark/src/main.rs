@@ -20,12 +20,12 @@ fn main() -> io::Result<()> {
             hash_benchmark(size);
             Ok(())
         }
-        Some("read") => {
-            println!("{:?}", read_benchmark());
+        Some("seq") => {
+            println!("{:?}", seq_benchmark());
             Ok(())
         }
         _ => {
-            eprintln!("usage: hash-benchmark generate <size> | hash <size> | read");
+            eprintln!("usage: hash-benchmark generate <size> | hash <size> | seq");
             Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid input"))
         }
     }
@@ -77,7 +77,7 @@ fn hash_benchmark(size: usize) {
     println!("Throughput: {:?} MiB/s", throughput);
 }
 
-fn read_benchmark() -> io::Result<usize> {
+fn seq_benchmark() -> io::Result<usize> {
     let mut file = File::open(BENCHMARK_PATH)?;
     let mut buffer = [0u8; 4096];
     let bytes = file.read(&mut buffer)?;
