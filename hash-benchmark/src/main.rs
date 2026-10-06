@@ -21,11 +21,12 @@ fn main() -> io::Result<()> {
             Ok(())
         }
         Some("seq") => {
-            println!("{:?}", seq_benchmark());
+            let buffer_size = size.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid buffer size"))?;
+            seq_benchmark(buffer_size)?;
             Ok(())
         }
         _ => {
-            eprintln!("usage: hash-benchmark generate <size> | hash <size> | seq");
+            eprintln!("usage: hash-benchmark generate <size> | hash <size> | seq <buffer_size>");
             Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid input"))
         }
     }
@@ -77,11 +78,28 @@ fn hash_benchmark(size: usize) {
     println!("Throughput: {:?} MiB/s", throughput);
 }
 
-fn seq_benchmark() -> io::Result<usize> {
+fn seq_benchmark(buf_size: usize) -> io::Result<usize> {
+    if buf_size == 0 {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid input"));
+    }
     let mut file = File::open(BENCHMARK_PATH)?;
-    let mut buffer = [0u8; 4096];
-    let bytes = file.read(&mut buffer)?;
-    Ok(bytes)
+    let mut buf = vec![0u8; buf_size];
+    let mut total = 0;
+    let start = Instant::now();
+    loop {
+        let bytes = file.read(&mut buf)?;
+        if bytes == 0 {
+            break;
+        }
+        total += bytes;
+    }
+    let runtime = start.elapsed();
+    let runtime_secs = runtime.as_secs_f64();
+    let throughput = (total as f64 / 1024.0 / 1024.0) / runtime_secs;
+    println!("Read: {:?} bytes", total);
+    println!("Runtime: {:?}", runtime);
+    println!("Throughput: {:.2} MiB/s", throughput);
+    Ok(total)
 }
 
 #[cfg(test)]
