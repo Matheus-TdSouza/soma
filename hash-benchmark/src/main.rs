@@ -139,8 +139,8 @@ fn seq_benchmark(buf_size: usize, direct: bool) -> io::Result<usize> {
     } else {
         File::open(BENCHMARK_PATH)?
     };
-    let mut raw = vec![0u8; SECTOR_ALIGN * 2];
-    let buf = aligned(&mut raw, SECTOR_ALIGN);
+    let mut raw = vec![0u8; buf_size + SECTOR_ALIGN];
+    let buf = aligned(&mut raw, buf_size);
     let mut total = 0;
     let start = Instant::now();
     loop {
@@ -177,18 +177,37 @@ fn rand_benchmark(n: usize, direct: bool) -> io::Result<Vec<std::time::Duration>
         ));
     }
     let mut rng = rand::rng();
-    let mut buf = vec![0u8; SECTOR_ALIGN];
+    let mut raw = vec![0u8; SECTOR_ALIGN * 2];
+    let buf = aligned(&mut raw, SECTOR_ALIGN);
     let mut durations = Vec::with_capacity(n);
     for _ in 0..n {
         let block = rng.random_range(0..n_blocks);
         let offset = block * SECTOR_ALIGN as u64;
         let start = Instant::now();
         file.seek(SeekFrom::Start(offset))?;
-        file.read_exact(&mut buf)?;
+        file.read_exact(buf)?;
         let duration = start.elapsed();
         durations.push(duration);
     }
     Ok(durations)
+}
+
+fn compute_hash(data: &[u8], algo: HashAlgo) -> [u8; 32] {
+    match algo {
+        HashAlgo::Sha256 => Sha256::digest(data).into(),
+        HashAlgo::Blake3 => *blake3::hash(data).as_bytes(),
+        HashAlgo::Blake3Mt => *blake3::Hasher::new().update_rayon(data).finalize().as_bytes(),
+    }
+}
+
+fn time_hash(data: &[u8], algo: HashAlgo) {
+    let start = Instant::now();
+    let hash = compute_hash(data, algo);
+    let runtime = start.elapsed();
+    std::hint::black_box(&hash);
+    let hex: String = hash.iter().map(|b| format!("{:02x}", b)).collect();
+    let throughput = (data.len() as f64 / 1024.0 / 1024.0) / runtime.as_secs_f64();
+    println!("{:?}: {} | {:?} | {:.2} MiB/s", algo, hex, runtime, throughput);
 }
 
 #[cfg(windows)]
