@@ -18,8 +18,18 @@ fn main() -> io::Result<()> {
             Ok(())
         }
         Some("hash") => {
-            let size = size.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid size"))?;
-            hash_benchmark(size);
+            let size = size.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidInput, "Invalid size")
+            })?;
+            let algo = match args.get(3) {
+                Some(s) => Some(
+                    parse_algo(s).ok_or_else(|| {
+                        io::Error::new(io::ErrorKind::InvalidInput, "Invalid hash algorithm")
+                    })?
+                ),
+                None => None,
+            };
+            hash_benchmark(size, algo);
             Ok(())
         }
         Some("seq") => {
@@ -40,7 +50,7 @@ fn main() -> io::Result<()> {
             Ok(())
         }
         _ => {
-            eprintln!("usage: hash-benchmark generate <size> | hash <size> | seq <buffer_size> [direct] | rand <n> [direct]");
+            eprintln!("usage: hash-benchmark generate <size> | hash <size> [sha256|blake3|blake3-mt] | seq <buffer_size> [direct] | rand <n> [direct]");
             Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid input"))
         }
     }
@@ -57,6 +67,22 @@ fn parse_size(s: &str) -> Option<usize> {
         _ => return None,
     };
     number.checked_mul(mult)
+}
+
+#[derive(Debug, Clone, Copy)]
+enum HashAlgo {
+    Sha256,
+    Blake3,
+    Blake3Mt,
+}
+
+fn parse_algo(s: &str) -> Option<HashAlgo> {
+    match s {
+        "sha256" => Some(HashAlgo::Sha256),
+        "blake3" => Some(HashAlgo::Blake3),
+        "blake3-mt" => Some(HashAlgo::Blake3Mt),
+        _ => None,
+    }
 }
 
 fn generate(path: &str, total: usize) -> io::Result<()> {
@@ -112,22 +138,16 @@ fn print_latency_stats(durations: &mut [Duration]) {
     println!("IOPS: {:.2}", iops);
 }
 
-fn hash_benchmark(size: usize) {
-    let size_f64 = size as f64;
-    let mut data: Vec<u8> = Vec::with_capacity(size);
-    data.resize(size, 1);
-    let start = Instant::now();
-    let hash = Sha256::digest(data);
-    let runtime = start.elapsed();
-    print!("Hash: ");
-    for data in hash {
-        print!("{:02x}", data);
+fn hash_benchmark(size: usize, algo: Option<HashAlgo>) {
+    let data = vec![1u8; size];
+    match algo {
+        Some(algo) => time_hash(&data, algo),
+        None => {
+            for algo in [HashAlgo::Sha256, HashAlgo::Blake3, HashAlgo::Blake3Mt] {
+                time_hash(&data, algo);
+            }
+        }
     }
-    println!();
-    println!("Runtime: {:?}", runtime);
-    let runtime_secs = runtime.as_secs_f64();
-    let throughput = (size_f64 / 1024.0 / 1024.0) / runtime_secs;
-    println!("Throughput: {:?} MiB/s", throughput);
 }
 
 fn seq_benchmark(buf_size: usize, direct: bool) -> io::Result<usize> {
@@ -352,5 +372,48 @@ mod tests {
     fn std_dev_returns_zero_single_sample() {
         let durations = vec![Duration::from_millis(1)];
         assert_eq!(std_dev(&durations), Duration::ZERO);
+    }
+
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|b| format!("{:02x}", b)).collect()
+    }
+
+    #[test]
+    fn parse_algo_accepts_known_names() {
+        assert!(matches!(parse_algo("sha256"), Some(HashAlgo::Sha256)));
+        assert!(matches!(parse_algo("blake3"), Some(HashAlgo::Blake3)));
+        assert!(matches!(parse_algo("blake3-mt"), Some(HashAlgo::Blake3Mt)));
+    }
+
+    #[test]
+    fn parse_algo_rejects_unknown_names() {
+        assert!(parse_algo("blake").is_none());
+        assert!(parse_algo("SHA256").is_none());
+        assert!(parse_algo("").is_none());
+    }
+
+    #[test]
+    fn compute_hash_sha256_matches_known_vector() {
+        assert_eq!(
+            hex(&compute_hash(b"abc", HashAlgo::Sha256)),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    #[test]
+    fn compute_hash_blake3_matches_known_vector() {
+        assert_eq!(
+            hex(&compute_hash(b"abc", HashAlgo::Blake3)),
+            "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85"
+        );
+    }
+
+    #[test]
+    fn compute_hash_blake3_single_and_multi_thread_agree() {
+        let data = vec![7u8; 1 << 20];
+        assert_eq!(
+            compute_hash(&data, HashAlgo::Blake3),
+            compute_hash(&data, HashAlgo::Blake3Mt)
+        );
     }
 }
