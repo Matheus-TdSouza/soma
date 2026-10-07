@@ -83,19 +83,32 @@ fn percentile(sorted: &[Duration], p: usize) -> Duration {
     sorted[p * (sorted.len() - 1) / 100]
 }
 
+fn std_dev(durations: &[Duration]) -> Duration {
+    let n = durations.len();
+    if n < 2 {
+        return Duration::ZERO;
+    }
+    let mean = durations.iter().map(Duration::as_secs_f64).sum::<f64>() / n as f64;
+    let variance = durations
+        .iter()
+        .map(|d| (d.as_secs_f64() - mean).powi(2))
+        .sum::<f64>()
+        / (n - 1) as f64;
+    Duration::from_secs_f64(variance.sqrt())
+}
+
 fn print_latency_stats(durations: &mut [Duration]) {
     durations.sort();
-
     let n = durations.len();
     let total = durations.iter().sum::<Duration>();
     let average = total.div_f64(n as f64);
     let iops = n as f64 / total.as_secs_f64();
-
     println!("p50: {:?}", percentile(durations, 50));
     println!("p90: {:?}", percentile(durations, 90));
     println!("p99: {:?}", percentile(durations, 99));
     println!("Max: {:?}", durations[n - 1]);
     println!("Average: {:?}", average);
+    println!("Std dev: {:?}", std_dev(durations));
     println!("IOPS: {:.2}", iops);
 }
 
@@ -305,5 +318,20 @@ mod tests {
         assert_eq!(percentile(&durations, 50), Duration::from_millis(50));
         assert_eq!(percentile(&durations, 99), Duration::from_millis(99));
         assert_eq!(percentile(&durations, 100), Duration::from_millis(100));
+    }
+
+    #[test]
+    fn std_dev_returns_sample_standard_deviation() {
+        let durations: Vec<Duration> = (1..=5)
+            .map(Duration::from_millis)
+            .collect();
+        let s = std_dev(&durations).as_secs_f64();
+        assert!((s - 2.5e-6_f64.sqrt()).abs() < 1e-9);
+    }
+
+    #[test]
+    fn std_dev_returns_zero_single_sample() {
+        let durations = vec![Duration::from_millis(1)];
+        assert_eq!(std_dev(&durations), Duration::ZERO);
     }
 }
