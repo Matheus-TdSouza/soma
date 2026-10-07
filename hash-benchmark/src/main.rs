@@ -3,7 +3,9 @@ use std::time::Instant;
 use std::fs::File;
 use std::io::{self, Read, Write};
 use rand::prelude::*;
+
 const BENCHMARK_PATH: &str = "../benchmark.bin";
+const SECTOR_ALIGN: usize = 4096;
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -21,12 +23,13 @@ fn main() -> io::Result<()> {
             Ok(())
         }
         Some("seq") => {
+            let direct = args.get(3).map(String::as_str) == Some("direct");
             let buffer_size = size.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid buffer size"))?;
-            seq_benchmark(buffer_size)?;
+            seq_benchmark(buffer_size, direct)?;
             Ok(())
         }
         _ => {
-            eprintln!("usage: hash-benchmark generate <size> | hash <size> | seq <buffer_size>");
+            eprintln!("usage: hash-benchmark generate <size> | hash <size> | seq <buffer_size> [direct]");
             Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid input"))
         }
     }
@@ -78,16 +81,22 @@ fn hash_benchmark(size: usize) {
     println!("Throughput: {:?} MiB/s", throughput);
 }
 
-fn seq_benchmark(buf_size: usize) -> io::Result<usize> {
-    if buf_size == 0 {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid input"));
+fn seq_benchmark(buf_size: usize, direct: bool) -> io::Result<usize> {
+    if buf_size == 0 || !buf_size.is_multiple_of(SECTOR_ALIGN) {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid buffer size"));
     }
-    let mut file = File::open(BENCHMARK_PATH)?;
-    let mut buf = vec![0u8; buf_size];
+    let mut file = if direct {
+        open_direct(BENCHMARK_PATH)?
+    } else {
+        File::open(BENCHMARK_PATH)?
+    };
+    let mut raw = vec![0u8; buf_size + SECTOR_ALIGN];
+    let offset = raw.as_ptr().align_offset(SECTOR_ALIGN);
+    let buf = &mut raw[offset..offset + buf_size];
     let mut total = 0;
     let start = Instant::now();
     loop {
-        let bytes = file.read(&mut buf)?;
+        let bytes = file.read(buf)?;
         if bytes == 0 {
             break;
         }
@@ -100,6 +109,23 @@ fn seq_benchmark(buf_size: usize) -> io::Result<usize> {
     println!("Runtime: {:?}", runtime);
     println!("Throughput: {:.2} MiB/s", throughput);
     Ok(total)
+}
+
+#[cfg(windows)]
+fn open_direct(path: &str) -> io::Result<File> {
+    use std::os::windows::fs::OpenOptionsExt;
+    use std::fs::OpenOptions;
+    const FILE_FLAG_NO_BUFFERING: u32 = 0x2000_0000;
+    let file = OpenOptions::new()
+        .read(true)
+        .custom_flags(FILE_FLAG_NO_BUFFERING)
+        .open(path)?;
+    Ok(file)
+}
+
+#[cfg(not(windows))]
+fn open_direct(_path: &str) -> io::Result<File> {
+    Err(io::Error::new(io::ErrorKind::Unsupported, "direct I/O only implemented on Windows"))
 }
 
 #[cfg(test)]
