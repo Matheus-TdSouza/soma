@@ -1,7 +1,7 @@
 use sha2::{Sha256, Digest};
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use rand::prelude::*;
 
 const BENCHMARK_PATH: &str = "../benchmark.bin";
@@ -28,8 +28,19 @@ fn main() -> io::Result<()> {
             seq_benchmark(buffer_size, direct)?;
             Ok(())
         }
+        Some("rand") => {
+            let n = args
+                .get(2)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Missing number of reads"))?
+                .parse::<usize>()
+                .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid number of reads"))?;
+            let direct = args.get(3).map(String::as_str) == Some("direct");
+            let mut durations = rand_benchmark(n, direct)?;
+            print_latency_stats(&mut durations);
+            Ok(())
+        }
         _ => {
-            eprintln!("usage: hash-benchmark generate <size> | hash <size> | seq <buffer_size> [direct]");
+            eprintln!("usage: hash-benchmark generate <size> | hash <size> | seq <buffer_size> [direct] | rand <n> [direct]");
             Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid input"))
         }
     }
@@ -63,6 +74,31 @@ fn generate(path: &str, total: usize) -> io::Result<()> {
     Ok(())
 }
 
+fn aligned(raw: &mut [u8], size: usize) -> &mut [u8] {
+    let offset = raw.as_ptr().align_offset(SECTOR_ALIGN);
+    &mut raw[offset..offset + size]
+}
+
+fn percentile(sorted: &[Duration], p: usize) -> Duration {
+    sorted[p * (sorted.len() - 1) / 100]
+}
+
+fn print_latency_stats(durations: &mut [Duration]) {
+    durations.sort();
+
+    let n = durations.len();
+    let total = durations.iter().sum::<Duration>();
+    let average = total.div_f64(n as f64);
+    let iops = n as f64 / total.as_secs_f64();
+
+    println!("p50: {:?}", percentile(durations, 50));
+    println!("p90: {:?}", percentile(durations, 90));
+    println!("p99: {:?}", percentile(durations, 99));
+    println!("Max: {:?}", durations[n - 1]);
+    println!("Average: {:?}", average);
+    println!("IOPS: {:.2}", iops);
+}
+
 fn hash_benchmark(size: usize) {
     let size_f64 = size as f64;
     let mut data: Vec<u8> = Vec::with_capacity(size);
@@ -90,9 +126,8 @@ fn seq_benchmark(buf_size: usize, direct: bool) -> io::Result<usize> {
     } else {
         File::open(BENCHMARK_PATH)?
     };
-    let mut raw = vec![0u8; buf_size + SECTOR_ALIGN];
-    let offset = raw.as_ptr().align_offset(SECTOR_ALIGN);
-    let buf = &mut raw[offset..offset + buf_size];
+    let mut raw = vec![0u8; SECTOR_ALIGN * 2];
+    let buf = aligned(&mut raw, SECTOR_ALIGN);
     let mut total = 0;
     let start = Instant::now();
     loop {
@@ -109,6 +144,38 @@ fn seq_benchmark(buf_size: usize, direct: bool) -> io::Result<usize> {
     println!("Runtime: {:?}", runtime);
     println!("Throughput: {:.2} MiB/s", throughput);
     Ok(total)
+}
+
+fn rand_benchmark(n: usize, direct: bool) -> io::Result<Vec<std::time::Duration>> {
+    if n == 0 {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid number of reads",));
+    }
+    let mut file = if direct {
+        open_direct(BENCHMARK_PATH)?
+    } else {
+        File::open(BENCHMARK_PATH)?
+    };
+    let file_size = file.metadata()?.len();
+    let n_blocks = file_size / SECTOR_ALIGN as u64;
+    if n_blocks == 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "File is too small",
+        ));
+    }
+    let mut rng = rand::rng();
+    let mut buf = vec![0u8; SECTOR_ALIGN];
+    let mut durations = Vec::with_capacity(n);
+    for _ in 0..n {
+        let block = rng.random_range(0..n_blocks);
+        let offset = block * SECTOR_ALIGN as u64;
+        let start = Instant::now();
+        file.seek(SeekFrom::Start(offset))?;
+        file.read_exact(&mut buf)?;
+        let duration = start.elapsed();
+        durations.push(duration);
+    }
+    Ok(durations)
 }
 
 #[cfg(windows)]
@@ -228,5 +295,15 @@ mod tests {
         assert_eq!(bytes.len(), total);
         assert!(bytes.iter().any(|&b| b != 0));
         Ok(())
+    }
+
+    #[test]
+    fn percentile_returns_expected_values() {
+        let durations: Vec<Duration> = (1..=100)
+            .map(Duration::from_millis)
+            .collect();
+        assert_eq!(percentile(&durations, 50), Duration::from_millis(50));
+        assert_eq!(percentile(&durations, 99), Duration::from_millis(99));
+        assert_eq!(percentile(&durations, 100), Duration::from_millis(100));
     }
 }
