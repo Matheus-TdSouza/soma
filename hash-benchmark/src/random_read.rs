@@ -1,17 +1,21 @@
-use crate::file::{aligned, open_direct, BENCHMARK_PATH, SECTOR_ALIGN};
+use crate::file::{SECTOR_ALIGN, aligned, open_direct};
 use rand::prelude::*;
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
+use std::path::Path;
 use std::time::{Duration, Instant};
 
-pub fn rand_benchmark(n: usize, direct: bool) -> io::Result<Vec<Duration>> {
+pub fn rand_benchmark(path: &Path, n: usize, direct: bool) -> io::Result<Vec<Duration>> {
     if n == 0 {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid number of reads",));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Invalid number of reads",
+        ));
     }
     let mut file = if direct {
-        open_direct(BENCHMARK_PATH)?
+        open_direct(path)?
     } else {
-        File::open(BENCHMARK_PATH)?
+        File::open(path)?
     };
     let file_size = file.metadata()?.len();
     let n_blocks = file_size / SECTOR_ALIGN as u64;

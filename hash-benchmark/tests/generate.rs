@@ -3,10 +3,9 @@ use std::io;
 
 fn generate_temp(name: &str, total: usize) -> io::Result<Vec<u8>> {
     let path = std::env::temp_dir().join(name);
-    let path = path.to_str().unwrap();
-    generate(path, total)?;
-    let bytes = std::fs::read(path)?;
-    std::fs::remove_file(path)?;
+    generate(&path, total)?;
+    let bytes = std::fs::read(&path)?;
+    std::fs::remove_file(&path)?;
     Ok(bytes)
 }
 

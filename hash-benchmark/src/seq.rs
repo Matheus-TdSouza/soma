@@ -1,16 +1,20 @@
-use crate::file::{aligned, open_direct, BENCHMARK_PATH, SECTOR_ALIGN};
+use crate::file::{SECTOR_ALIGN, aligned, open_direct};
 use std::fs::File;
 use std::io::{self, Read};
+use std::path::Path;
 use std::time::Instant;
 
-pub fn seq_benchmark(buf_size: usize, direct: bool) -> io::Result<usize> {
+pub fn seq_benchmark(path: &Path, buf_size: usize, direct: bool) -> io::Result<usize> {
     if buf_size == 0 || !buf_size.is_multiple_of(SECTOR_ALIGN) {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid buffer size"));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Invalid buffer size",
+        ));
     }
     let mut file = if direct {
-        open_direct(BENCHMARK_PATH)?
+        open_direct(path)?
     } else {
-        File::open(BENCHMARK_PATH)?
+        File::open(path)?
     };
     let mut raw = vec![0u8; buf_size + SECTOR_ALIGN];
     let buf = aligned(&mut raw, buf_size);

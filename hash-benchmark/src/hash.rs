@@ -33,7 +33,10 @@ pub fn compute_hash(data: &[u8], algo: HashAlgo) -> [u8; 32] {
     match algo {
         HashAlgo::Sha256 => Sha256::digest(data).into(),
         HashAlgo::Blake3 => *blake3::hash(data).as_bytes(),
-        HashAlgo::Blake3Mt => *blake3::Hasher::new().update_rayon(data).finalize().as_bytes(),
+        HashAlgo::Blake3Mt => *blake3::Hasher::new()
+            .update_rayon(data)
+            .finalize()
+            .as_bytes(),
     }
 }
 
@@ -44,5 +47,8 @@ fn time_hash(data: &[u8], algo: HashAlgo) {
     std::hint::black_box(&hash);
     let hex: String = hash.iter().map(|b| format!("{:02x}", b)).collect();
     let throughput = (data.len() as f64 / 1024.0 / 1024.0) / runtime.as_secs_f64();
-    println!("{:?}: {} | {:?} | {:.2} MiB/s", algo, hex, runtime, throughput);
+    println!(
+        "{:?}: {} | {:?} | {:.2} MiB/s",
+        algo, hex, runtime, throughput
+    );
 }
