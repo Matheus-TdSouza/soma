@@ -28,6 +28,7 @@ From inside `hash-benchmark/`, `-p hash-benchmark` can be dropped. Use `--help` 
 | `seq <buffer_size> [--direct] [--path P]` | Sequential read of the whole file: bytes, time and MiB/s |
 | `rand <n> [--direct] [--path P]` | `n` random 4 KiB reads: p50, p90, p99, max, mean, standard deviation and IOPS |
 | `hash <size> [sha256\|blake3\|blake3-mt]` | Hash throughput over an in-memory buffer; runs all three algorithms when none is given |
+| `suite --label L [--path P] [--size S] [--reps N] [--out F] [--keep]` | Runs everything above on one drive and writes the results to a CSV file |
 
 Sizes take a `K`, `M` or `G` suffix (`4K`, `1M`, `2G`). `--path` defaults to `benchmark.bin` in the current directory.
 
@@ -38,6 +39,20 @@ cargo run --release -p hash-benchmark -- generate 1G --path E:/bench.bin
 cargo run --release -p hash-benchmark -- seq 1M --direct --path E:/bench.bin
 cargo run --release -p hash-benchmark -- rand 10000 --direct --path E:/bench.bin
 ```
+
+## Collecting results
+
+`suite` is the command to run on each machine and drive. It creates the benchmark file, runs `seq --direct` over the first 1 GiB with 4 KiB, 64 KiB, 1 MiB and 8 MiB buffers, `rand --direct` with 10,000 reads and all three hashes over 1 GiB, repeats everything `--reps` times (default 3), deletes the benchmark file and leaves one CSV behind:
+
+```
+cargo run --release -p hash-benchmark -- suite --label matheus-e-hdd --path E:/bench.bin --size 100G --out matheus-e-hdd.csv
+```
+
+- `--label` names the machine and drive in every row; commas are not allowed.
+- `--size` sets the file that `rand` samples from. Use 1G for SSDs; for hard drives use a file covering a large share of the disk, since `rand` latency depends on how far the head travels. Generating it takes time (about 10 minutes per 100 GB at 170 MB/s).
+- `suite` refuses to overwrite an existing `--path` or `--out`, so it never destroys a file by accident.
+- Each measurement is written as soon as it finishes, so an interrupted run keeps everything measured so far.
+- The CSV is in long format, one number per row: `label,test,param,rep,metric,value`. Times are in microseconds (`_us`), throughput in MiB/s, sizes in bytes.
 
 ## Notes on measuring
 

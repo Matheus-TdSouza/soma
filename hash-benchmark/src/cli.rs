@@ -13,6 +13,25 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
+    #[command(about = "Run every benchmark on one drive and write the results to a CSV file")]
+    Suite {
+        #[arg(long, value_parser = parse_label_arg, help = "Machine and drive name, e.g. matheus-c-nvme")]
+        label: String,
+        #[arg(long, default_value = BENCHMARK_PATH, help = "Benchmark file to create; must not exist")]
+        path: PathBuf,
+        #[arg(long, value_parser = parse_size_arg, default_value = "1G", help = "Benchmark file size")]
+        size: usize,
+        #[arg(long, default_value_t = 3, value_parser = clap::value_parser!(u32).range(1..))]
+        reps: u32,
+        #[arg(
+            long,
+            default_value = "results.csv",
+            help = "CSV output; must not exist"
+        )]
+        out: PathBuf,
+        #[arg(long, help = "Keep the benchmark file instead of deleting it")]
+        keep: bool,
+    },
     #[command(about = "Write a file of random bytes")]
     Generate {
         #[arg(value_parser = parse_size_arg, help = "File size, e.g. 1G")]
@@ -53,4 +72,13 @@ fn parse_size_arg(s: &str) -> Result<usize, String> {
 fn parse_algo_arg(s: &str) -> Result<HashAlgo, String> {
     parse_algo(s)
         .ok_or_else(|| format!("invalid algorithm '{s}', expected sha256, blake3 or blake3-mt"))
+}
+
+fn parse_label_arg(s: &str) -> Result<String, String> {
+    if s.is_empty() || s.contains([',', '\n', '\r']) {
+        return Err(format!(
+            "invalid label '{s}', must be non-empty and contain no commas"
+        ));
+    }
+    Ok(s.to_string())
 }

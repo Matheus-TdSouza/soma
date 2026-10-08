@@ -15,7 +15,12 @@ impl SeqResult {
     }
 }
 
-pub fn seq_benchmark(path: &Path, buf_size: usize, direct: bool) -> io::Result<SeqResult> {
+pub fn seq_benchmark(
+    path: &Path,
+    buf_size: usize,
+    direct: bool,
+    limit: usize,
+) -> io::Result<SeqResult> {
     if buf_size == 0 || !buf_size.is_multiple_of(SECTOR_ALIGN) {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -31,7 +36,7 @@ pub fn seq_benchmark(path: &Path, buf_size: usize, direct: bool) -> io::Result<S
     let buf = aligned(&mut raw, buf_size);
     let mut total = 0;
     let start = Instant::now();
-    loop {
+    while total < limit {
         let bytes = file.read(buf)?;
         if bytes == 0 {
             break;

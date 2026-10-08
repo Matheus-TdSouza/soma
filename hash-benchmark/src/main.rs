@@ -1,4 +1,5 @@
 mod cli;
+mod suite;
 
 use clap::Parser;
 use cli::{Cli, Command};
@@ -12,6 +13,14 @@ use std::io;
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Command::Suite {
+            label,
+            path,
+            size,
+            reps,
+            out,
+            keep,
+        } => suite::run(&label, &path, size, reps, &out, keep)?,
         Command::Generate { size, path } => {
             generate(&path, size)?;
             println!("File generated with {} bytes", size);
@@ -32,7 +41,7 @@ fn main() -> io::Result<()> {
             direct,
             path,
         } => {
-            let result = seq_benchmark(&path, buf_size, direct)?;
+            let result = seq_benchmark(&path, buf_size, direct, usize::MAX)?;
             println!("Read: {} bytes", result.bytes);
             println!("Runtime: {:?}", result.runtime);
             println!("Throughput: {:.2} MiB/s", result.throughput_mib_s());
