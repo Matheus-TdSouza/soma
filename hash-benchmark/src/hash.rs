@@ -8,6 +8,16 @@ pub enum HashAlgo {
     Blake3Mt,
 }
 
+impl HashAlgo {
+    pub fn name(&self) -> &'static str {
+        match self {
+            HashAlgo::Sha256 => "sha256",
+            HashAlgo::Blake3 => "blake3",
+            HashAlgo::Blake3Mt => "blake3-mt",
+        }
+    }
+}
+
 pub struct HashResult {
     pub algo: HashAlgo,
     pub hash: [u8; 32],
