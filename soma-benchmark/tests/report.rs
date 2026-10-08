@@ -1,8 +1,8 @@
-use hash_benchmark::report::{
+use soma_benchmark::report::{
     CsvWriter, HEADER, RunMeta, generate_rows, meta_rows, rand_rows, seq_rows, write_row,
 };
-use hash_benchmark::seq::SeqResult;
-use hash_benchmark::stats::LatencyStats;
+use soma_benchmark::seq::SeqResult;
+use soma_benchmark::stats::LatencyStats;
 use std::time::Duration;
 
 #[test]
@@ -24,7 +24,7 @@ fn seq_rows_writes_runtime_and_throughput() {
 
 #[test]
 fn hash_algo_name_round_trips() {
-    use hash_benchmark::hash::{HashAlgo, parse_algo};
+    use soma_benchmark::hash::{HashAlgo, parse_algo};
     for algo in [HashAlgo::Sha256, HashAlgo::Blake3, HashAlgo::Blake3Mt] {
         assert_eq!(parse_algo(algo.name()).map(|a| a.name()), Some(algo.name()));
     }

@@ -1,6 +1,6 @@
 # Benchmarks
 
-Disk and hashing measurements collected with `hash-benchmark suite`. They size the cost of storing data and answering storage challenges: sequential reads bound the setup cost (reading a whole file to commit to it), random 4 KiB reads bound the cost of answering a challenge, and hash throughput bounds the CPU side of both.
+Disk and hashing measurements collected with `soma-benchmark suite`. They size the cost of storing data and answering storage challenges: sequential reads bound the setup cost (reading a whole file to commit to it), random 4 KiB reads bound the cost of answering a challenge, and hash throughput bounds the CPU side of both.
 
 Devices are anonymized. Each machine gets an ID (`D01`, `D02`, ...) and each drive a suffix (`D01-nvme1`). No names, usernames or paths are recorded.
 
@@ -70,7 +70,7 @@ A round of `k` challenges read one at a time takes about `k × mean ± 2 × √k
 1. Run `suite` once per drive, with an anonymous label:
 
    ```
-   cargo run --release -p hash-benchmark -- suite --label D02-nvme1 --out D02-nvme1.csv
+   cargo run --release -p soma-benchmark -- suite --label D02-nvme1 --out D02-nvme1.csv
    ```
 
    For hard drives, use a large `--size` (for example `100G`) and a `--path` on that drive.

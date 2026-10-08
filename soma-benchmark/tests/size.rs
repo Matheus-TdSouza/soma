@@ -1,4 +1,4 @@
-use hash_benchmark::size::parse_size;
+use soma_benchmark::size::parse_size;
 
 #[test]
 fn parse_size_gigabytes() {

@@ -1,4 +1,4 @@
-use hash_benchmark::file::generate;
+use soma_benchmark::file::generate;
 use std::io;
 
 fn generate_temp(name: &str, total: usize) -> io::Result<Vec<u8>> {

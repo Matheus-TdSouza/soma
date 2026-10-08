@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
-use hash_benchmark::file::BENCHMARK_PATH;
-use hash_benchmark::hash::{HashAlgo, parse_algo};
-use hash_benchmark::size::parse_size;
+use soma_benchmark::file::BENCHMARK_PATH;
+use soma_benchmark::hash::{HashAlgo, parse_algo};
+use soma_benchmark::size::parse_size;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -15,7 +15,7 @@ pub struct Cli {
 pub enum Command {
     #[command(about = "Run every benchmark on one drive and write the results to a CSV file")]
     Suite {
-        #[arg(long, value_parser = parse_label_arg, help = "Machine and drive name, e.g. matheus-c-nvme")]
+        #[arg(long, value_parser = parse_label_arg, help = "Anonymous machine and drive ID, e.g. D01-nvme1")]
         label: String,
         #[arg(long, default_value = BENCHMARK_PATH, help = "Benchmark file to create; must not exist")]
         path: PathBuf,

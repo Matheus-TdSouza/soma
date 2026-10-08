@@ -3,11 +3,11 @@ mod suite;
 
 use clap::Parser;
 use cli::{Cli, Command};
-use hash_benchmark::file::generate;
-use hash_benchmark::hash::hash_benchmark;
-use hash_benchmark::random_read::rand_benchmark;
-use hash_benchmark::seq::seq_benchmark;
-use hash_benchmark::stats::latency_stats;
+use soma_benchmark::file::generate;
+use soma_benchmark::hash::hash_benchmark;
+use soma_benchmark::random_read::rand_benchmark;
+use soma_benchmark::seq::seq_benchmark;
+use soma_benchmark::stats::latency_stats;
 use std::io;
 
 fn main() -> io::Result<()> {

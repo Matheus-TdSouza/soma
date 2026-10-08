@@ -1,4 +1,4 @@
-use hash_benchmark::stats::{percentile, std_dev};
+use soma_benchmark::stats::{percentile, std_dev};
 use std::time::Duration;
 
 #[test]
