@@ -51,5 +51,6 @@ fn parse_size_arg(s: &str) -> Result<usize, String> {
 }
 
 fn parse_algo_arg(s: &str) -> Result<HashAlgo, String> {
-    parse_algo(s).ok_or_else(|| format!("invalid algorithm '{s}', expected sha256, blake3 or blake3-mt"))
+    parse_algo(s)
+        .ok_or_else(|| format!("invalid algorithm '{s}', expected sha256, blake3 or blake3-mt"))
 }

@@ -6,7 +6,7 @@ use hash_benchmark::file::generate;
 use hash_benchmark::hash::hash_benchmark;
 use hash_benchmark::random_read::rand_benchmark;
 use hash_benchmark::seq::seq_benchmark;
-use hash_benchmark::stats::print_latency_stats;
+use hash_benchmark::stats::latency_stats;
 use std::io;
 
 fn main() -> io::Result<()> {
@@ -16,13 +16,37 @@ fn main() -> io::Result<()> {
             generate(&path, size)?;
             println!("File generated with {} bytes", size);
         }
-        Command::Hash { size, algo } => hash_benchmark(size, algo),
-        Command::Seq { buf_size, direct, path } => {
-            seq_benchmark(&path, buf_size, direct)?;
+        Command::Hash { size, algo } => {
+            for r in hash_benchmark(size, algo) {
+                println!(
+                    "{:?}: {} | {:?} | {:.2} MiB/s",
+                    r.algo,
+                    r.hex(),
+                    r.runtime,
+                    r.throughput_mib_s()
+                );
+            }
+        }
+        Command::Seq {
+            buf_size,
+            direct,
+            path,
+        } => {
+            let result = seq_benchmark(&path, buf_size, direct)?;
+            println!("Read: {} bytes", result.bytes);
+            println!("Runtime: {:?}", result.runtime);
+            println!("Throughput: {:.2} MiB/s", result.throughput_mib_s());
         }
         Command::Rand { n, direct, path } => {
             let mut durations = rand_benchmark(&path, n, direct)?;
-            print_latency_stats(&mut durations);
+            let s = latency_stats(&mut durations);
+            println!("p50: {:?}", s.p50);
+            println!("p90: {:?}", s.p90);
+            println!("p99: {:?}", s.p99);
+            println!("Max: {:?}", s.max);
+            println!("Average: {:?}", s.mean);
+            println!("Std dev: {:?}", s.std_dev);
+            println!("IOPS: {:.2}", s.iops);
         }
     }
     Ok(())

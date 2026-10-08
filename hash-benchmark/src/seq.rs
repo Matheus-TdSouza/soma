@@ -2,9 +2,20 @@ use crate::file::{SECTOR_ALIGN, aligned, open_direct};
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-pub fn seq_benchmark(path: &Path, buf_size: usize, direct: bool) -> io::Result<usize> {
+pub struct SeqResult {
+    pub bytes: usize,
+    pub runtime: Duration,
+}
+
+impl SeqResult {
+    pub fn throughput_mib_s(&self) -> f64 {
+        self.bytes as f64 / 1024.0 / 1024.0 / self.runtime.as_secs_f64()
+    }
+}
+
+pub fn seq_benchmark(path: &Path, buf_size: usize, direct: bool) -> io::Result<SeqResult> {
     if buf_size == 0 || !buf_size.is_multiple_of(SECTOR_ALIGN) {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -28,10 +39,8 @@ pub fn seq_benchmark(path: &Path, buf_size: usize, direct: bool) -> io::Result<u
         total += bytes;
     }
     let runtime = start.elapsed();
-    let runtime_secs = runtime.as_secs_f64();
-    let throughput = (total as f64 / 1024.0 / 1024.0) / runtime_secs;
-    println!("Read: {:?} bytes", total);
-    println!("Runtime: {:?}", runtime);
-    println!("Throughput: {:.2} MiB/s", throughput);
-    Ok(total)
+    Ok(SeqResult {
+        bytes: total,
+        runtime,
+    })
 }
