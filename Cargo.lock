@@ -239,16 +239,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "soma-benchmark"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "clap",
- "rand",
- "sha2",
-]
-
-[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -348,6 +338,24 @@ name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
+
+[[package]]
+name = "soma-benchmark"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "clap",
+ "rand",
+ "sha2",
+]
+
+[[package]]
+name = "soma-merkle"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "sha2",
+]
 
 [[package]]
 name = "strsim"

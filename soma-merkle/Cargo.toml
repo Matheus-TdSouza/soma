@@ -1,0 +1,8 @@
+[package]
+name = "soma-merkle"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+blake3 = { workspace = true }
+sha2 = { workspace = true }
