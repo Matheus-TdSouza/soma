@@ -1,4 +1,4 @@
-use soma_merkle::{MerkleHasher, Sha256Hasher};
+use soma_merkle::{MerkleHasher, Sha256Hasher, Blake3Hasher};
 
 fn assert_domains_disjoint<H: MerkleHasher>() {
     let a = [1u8; 32];
