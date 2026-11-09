@@ -9,7 +9,7 @@ Current stage: the challenge protocol (`docs/challenge.md`), sized by the disk a
 
 - `soma-benchmark/`: disk read and hashing benchmarks.
   - `src/main.rs`, `src/cli.rs`: command line (clap).
-  - `src/lib.rs`: library modules (`file`, `seq`, `random_read`, `hash`, `merkle`, `stats`, `size`).
+  - `src/lib.rs`: library modules (`file`, `seq`, `random_read`, `hash`, `merkle`, `challenge`, `stats`, `size`).
   - `tests/`: tests against the library's public API.
 - `soma-challenge/`: challenge protocol: index derivation from a seed, `k` from the target detection rate, prover `respond`, verifier `check_round` and `round_deadline`. Specified in `docs/challenge.md`.
 - `soma-merkle/`: Merkle tree over fixed-size leaves (`build`, `build_reader`), proofs (`prove`) and `verify`. SHA-256 and BLAKE3 with 0x00/0x01 domain separation; the tree is padded to a power of two with zero hashes.
@@ -31,6 +31,7 @@ From inside `soma-benchmark/`, `-p soma-benchmark` can be dropped. Use `--help` 
 | `rand <n> [--direct] [--path P]` | `n` random 4 KiB reads: p50, p90, p99, max, mean, standard deviation and IOPS |
 | `hash <size> [sha256\|blake3\|blake3-mt]` | Hash throughput over an in-memory buffer; runs all three algorithms when none is given |
 | `merkle <size> [--leaf-size BYTES] [--algo sha256\|blake3]` | Merkle tree build time over an in-memory buffer, proof size and mean verify time; runs leaf sizes 32, 256, 1024 and 4096 and both hashers when not given |
+| `challenge [--path P] [--leaf-size BYTES] [--k K] [--rounds N] [--direct] [--algo A]` | Commits to the file, then answers `N` challenge rounds of `K` random leaves (default 459) from disk and checks each response; prints the time per round |
 | `suite --label L [--path P] [--size S] [--reps N] [--out F] [--keep]` | Runs everything above on one drive and writes the results to a CSV file |
 
 Sizes take a `K`, `M` or `G` suffix (`4K`, `1M`, `2G`). `--path` defaults to `benchmark.bin` in the current directory.

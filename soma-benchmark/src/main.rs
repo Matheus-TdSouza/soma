@@ -3,6 +3,7 @@ mod suite;
 
 use clap::Parser;
 use cli::{Cli, Command};
+use soma_benchmark::challenge::challenge_benchmark;
 use soma_benchmark::file::generate;
 use soma_benchmark::hash::hash_benchmark;
 use soma_benchmark::merkle::{LEAF_SIZES, MerkleAlgo, merkle_benchmark};
@@ -61,6 +62,23 @@ fn main() -> io::Result<()> {
                         r.verify
                     );
                 }
+            }
+        }
+        Command::Challenge {
+            path,
+            leaf_size,
+            k,
+            rounds,
+            direct,
+            algo,
+        } => {
+            let run = challenge_benchmark(&path, leaf_size, k as usize, rounds as usize, direct, algo)?;
+            println!(
+                "Committed {} leaves of {} B in {:?}; response {} B per round",
+                run.leaf_count, leaf_size, run.build, run.response_bytes
+            );
+            for (i, t) in run.rounds.iter().enumerate() {
+                println!("Round {}: {:?} ({:?} per challenge)", i + 1, t, *t / k);
             }
         }
         Command::Seq {

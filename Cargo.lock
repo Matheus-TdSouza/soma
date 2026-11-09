@@ -364,6 +364,7 @@ dependencies = [
  "libc",
  "rand",
  "sha2",
+ "soma-challenge",
  "soma-merkle",
 ]
 
