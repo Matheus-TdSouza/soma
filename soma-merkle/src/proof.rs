@@ -34,7 +34,7 @@ pub fn verify<H: MerkleHasher>(
     let mut idx = proof.index;
 
     for sibling in &proof.siblings {
-        hash = if idx % 2 == 0 {
+        hash = if idx.is_multiple_of(2) {
             H::node(&hash, sibling)
         } else {
             H::node(sibling, &hash)
