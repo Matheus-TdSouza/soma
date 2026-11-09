@@ -368,6 +368,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "soma-challenge"
+version = "0.1.0"
+dependencies = [
+ "sha2",
+ "soma-merkle",
+]
+
+[[package]]
 name = "soma-merkle"
 version = "0.1.0"
 dependencies = [

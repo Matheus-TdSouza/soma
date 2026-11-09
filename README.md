@@ -3,7 +3,7 @@
 A decentralized storage network where nodes prove they still hold the data they were paid to store.
 Each file is committed to a Merkle root; nodes answer random challenges with chunks and Merkle paths, and a smart contract verifies the answers.
 
-Current stage: disk read and hashing benchmarks, used to size the cost of answering challenges.
+Current stage: the challenge protocol (`docs/challenge.md`), sized by the disk and hashing benchmarks.
 
 ## Layout
 
@@ -11,6 +11,7 @@ Current stage: disk read and hashing benchmarks, used to size the cost of answer
   - `src/main.rs`, `src/cli.rs`: command line (clap).
   - `src/lib.rs`: library modules (`file`, `seq`, `random_read`, `hash`, `merkle`, `stats`, `size`).
   - `tests/`: tests against the library's public API.
+- `soma-challenge/`: challenge protocol: index derivation from a seed, `k` from the target detection rate, prover `respond`, verifier `check_round` and `round_deadline`. Specified in `docs/challenge.md`.
 - `soma-merkle/`: Merkle tree over fixed-size leaves (`build`, `build_reader`), proofs (`prove`) and `verify`. SHA-256 and BLAKE3 with 0x00/0x01 domain separation; the tree is padded to a power of two with zero hashes.
 
 ## Running
