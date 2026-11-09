@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 use crate::hasher::MerkleHasher;
+use crate::proof::{Commitment, Proof};
 
 pub struct MerkleTree<H: MerkleHasher> {
     levels: Vec<Vec<[u8; 32]>>,
@@ -46,5 +47,28 @@ impl<H: MerkleHasher> MerkleTree<H> {
 
     pub fn leaf_count(&self) -> usize {
         self.leaf_count
+    }
+
+    pub fn prove(&self, i: usize) -> Option<Proof> {
+        if i >= self.leaf_count {
+            return None;
+        }
+
+        let mut idx = i;
+        let mut siblings = Vec::with_capacity(self.levels.len() - 1);
+
+        for level in &self.levels[..self.levels.len() - 1] {
+            siblings.push(level[idx ^ 1]);
+            idx /= 2;
+        }
+
+        Some(Proof { index: i, siblings })
+    }
+
+    pub fn commitment(&self) -> Commitment {
+        Commitment {
+            root: self.root(),
+            leaf_count: self.leaf_count,
+        }
     }
 }
