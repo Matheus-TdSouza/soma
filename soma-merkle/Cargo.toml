@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 blake3 = { workspace = true }
+rayon = "1.10"
 sha2 = { workspace = true }
 
 [dev-dependencies]

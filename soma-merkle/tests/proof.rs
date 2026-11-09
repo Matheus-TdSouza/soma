@@ -1,4 +1,4 @@
-use soma_merkle::{MerkleHasher, MerkleTree, verify};
+use soma_merkle::{Blake3Hasher, MerkleHasher, MerkleTree, Sha256Hasher, verify};
 
 const LEAF_SIZE: usize = 4;
 
@@ -174,4 +174,39 @@ fn path_length_check_rejects_internal_node_as_leaf() {
 
     assert!(verify::<NoDomainHasher>(&c, leaf(&data, 0), &proof));
     assert!(!verify::<NoDomainHasher>(&c, &forged_leaf, &forged));
+}
+
+#[test]
+fn build_reader_matches_build() {
+    // Hands out at most 3 bytes per read, so blocks fill across short reads.
+    struct Trickle<'a>(&'a [u8]);
+    impl std::io::Read for Trickle<'_> {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let n = buf.len().min(3).min(self.0.len());
+            buf[..n].copy_from_slice(&self.0[..n]);
+            self.0 = &self.0[n..];
+            Ok(n)
+        }
+    }
+
+    for n in 1..=9 {
+        let data = data(n);
+        let a = MerkleTree::<Sha256Hasher>::build(&data, LEAF_SIZE).unwrap();
+        let b = MerkleTree::<Sha256Hasher>::build_reader(Trickle(&data), LEAF_SIZE)
+            .unwrap()
+            .unwrap();
+        assert_eq!(a.commitment(), b.commitment(), "n={n}");
+    }
+
+    // Input larger than one 8 MiB read block, not a multiple of it.
+    let big: Vec<u8> = (0..(9 << 20) + 5).map(|b: usize| b as u8).collect();
+    let a = MerkleTree::<Blake3Hasher>::build(&big, 1024).unwrap();
+    let b = MerkleTree::<Blake3Hasher>::build_reader(&big[..], 1024).unwrap().unwrap();
+    assert_eq!(a.commitment(), b.commitment());
+}
+
+#[test]
+fn build_reader_rejects_empty_and_zero_leaf_size() {
+    assert!(MerkleTree::<Sha256Hasher>::build_reader(&b""[..], 4).unwrap().is_none());
+    assert!(MerkleTree::<Sha256Hasher>::build_reader(&b"abc"[..], 0).unwrap().is_none());
 }
