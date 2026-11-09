@@ -63,7 +63,7 @@ A round of `k` challenges read one at a time takes about `k × mean ± 2 × √k
 - **Freshly written SSD data.** `suite` reads the file right after writing it. Consumer SSDs often keep recent writes in a faster cache area, so random read latency may be optimistic compared with data stored for weeks. An earlier ad hoc run on D01-nvme1 measured a p50 near 185 µs against 106 µs here; not yet confirmed.
 - **HDD file size.** Random read latency on a hard drive grows with the area the head has to cover. The D01-hdd1 file covers about 11% of the disk, written at the start of an empty drive (fastest zone).
 - **One request at a time.** All reads are synchronous. Drives serving parallel requests reach higher IOPS.
-- **Windows only.** `--direct` is not implemented on other systems yet.
+- **Windows only.** All results above were measured on Windows. `--direct` also works on Linux now, but no Linux device has been measured yet.
 
 ## Adding a device
 
