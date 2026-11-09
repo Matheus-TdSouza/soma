@@ -363,6 +363,7 @@ dependencies = [
  "clap",
  "rand",
  "sha2",
+ "soma-merkle",
 ]
 
 [[package]]

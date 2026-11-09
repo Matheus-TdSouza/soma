@@ -1,8 +1,9 @@
 use soma_benchmark::file::generate;
 use soma_benchmark::hash::hash_benchmark;
+use soma_benchmark::merkle::{LEAF_SIZES, MerkleAlgo, merkle_benchmark};
 use soma_benchmark::random_read::rand_benchmark;
 use soma_benchmark::report::{
-    CsvWriter, RunMeta, generate_rows, hash_rows, meta_rows, rand_rows, seq_rows,
+    CsvWriter, RunMeta, generate_rows, hash_rows, merkle_rows, meta_rows, rand_rows, seq_rows,
 };
 use soma_benchmark::seq::seq_benchmark;
 use soma_benchmark::stats::latency_stats;
@@ -14,6 +15,9 @@ const SEQ_BUFFERS: [usize; 4] = [4 << 10, 64 << 10, 1 << 20, 8 << 20];
 const SEQ_LIMIT: usize = 1 << 30;
 const RAND_READS: usize = 10_000;
 const HASH_SIZE: usize = 1 << 30;
+/// Smaller than HASH_SIZE: with 32 B leaves the tree takes twice the data size
+/// in hashes, and the buffer plus tree must fit in RAM.
+const MERKLE_SIZE: usize = 256 << 20;
 
 pub fn run(
     label: &str,
@@ -37,6 +41,7 @@ pub fn run(
             .map_or(0, |d| d.as_secs()),
         file_size_bytes: size,
         hash_size_bytes: HASH_SIZE,
+        merkle_size_bytes: MERKLE_SIZE,
         reps,
     };
     csv.write(&meta_rows(&meta))?;
@@ -73,6 +78,14 @@ fn measure(csv: &mut CsvWriter, path: &Path, reps: u32) -> io::Result<()> {
         eprintln!("[{}/{}] hash {} bytes", rep, reps, HASH_SIZE);
         for r in hash_benchmark(HASH_SIZE, None) {
             csv.write(&hash_rows(rep, &r))?;
+        }
+
+        for algo in MerkleAlgo::ALL {
+            for leaf_size in LEAF_SIZES {
+                eprintln!("[{}/{}] merkle {} leaf {} bytes", rep, reps, algo.name(), leaf_size);
+                let r = merkle_benchmark(MERKLE_SIZE, leaf_size, algo).expect("non-empty input");
+                csv.write(&merkle_rows(rep, &r))?;
+            }
         }
     }
     Ok(())

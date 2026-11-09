@@ -1,4 +1,5 @@
 use crate::hash::HashResult;
+use crate::merkle::MerkleResult;
 use crate::seq::SeqResult;
 use crate::stats::LatencyStats;
 use std::fs::File;
@@ -24,6 +25,7 @@ pub struct RunMeta {
     pub timestamp_unix: u64,
     pub file_size_bytes: usize,
     pub hash_size_bytes: usize,
+    pub merkle_size_bytes: usize,
     pub reps: u32,
 }
 
@@ -92,6 +94,29 @@ pub fn hash_rows(rep: u32, r: &HashResult) -> Vec<Row> {
         .collect()
 }
 
+/// One `merkle` row set per hasher and leaf size; `param` is e.g. `sha256-1024`.
+pub fn merkle_rows(rep: u32, r: &MerkleResult) -> Vec<Row> {
+    let metrics = [
+        ("build_runtime_us", format!("{:.3}", us(r.build))),
+        ("build_throughput_mib_s", format!("{:.3}", r.build_throughput_mib_s())),
+        ("leaf_count", r.leaf_count.to_string()),
+        ("depth", r.depth.to_string()),
+        ("proof_bytes", r.proof_bytes().to_string()),
+        ("verify_mean_us", format!("{:.3}", us(r.verify))),
+    ];
+
+    metrics
+        .into_iter()
+        .map(|(metric, value)| Row {
+            test: "merkle",
+            param: format!("{}-{}", r.algo.name(), r.leaf_size),
+            rep,
+            metric,
+            value,
+        })
+        .collect()
+}
+
 pub fn meta_rows(meta: &RunMeta) -> Vec<Row> {
     let metrics = [
         ("os", meta.os.to_string()),
@@ -100,6 +125,7 @@ pub fn meta_rows(meta: &RunMeta) -> Vec<Row> {
         ("timestamp_unix", meta.timestamp_unix.to_string()),
         ("file_size_bytes", meta.file_size_bytes.to_string()),
         ("hash_size_bytes", meta.hash_size_bytes.to_string()),
+        ("merkle_size_bytes", meta.merkle_size_bytes.to_string()),
         ("tool_version", meta.tool_version.to_string()),
         ("reps", meta.reps.to_string()),
     ];
