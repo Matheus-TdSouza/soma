@@ -5,6 +5,7 @@ use clap::Parser;
 use cli::{Cli, Command};
 use soma_benchmark::file::generate;
 use soma_benchmark::hash::hash_benchmark;
+use soma_benchmark::merkle::{LEAF_SIZES, MerkleAlgo, merkle_benchmark};
 use soma_benchmark::random_read::rand_benchmark;
 use soma_benchmark::seq::seq_benchmark;
 use soma_benchmark::stats::latency_stats;
@@ -34,6 +35,32 @@ fn main() -> io::Result<()> {
                     r.runtime,
                     r.throughput_mib_s()
                 );
+            }
+        }
+        Command::Merkle {
+            size,
+            leaf_size,
+            algo,
+        } => {
+            let algos = algo.map_or(MerkleAlgo::ALL.to_vec(), |a| vec![a]);
+            let leaf_sizes = leaf_size.map_or(LEAF_SIZES.to_vec(), |l| vec![l]);
+            for algo in algos {
+                for &leaf_size in &leaf_sizes {
+                    let Some(r) = merkle_benchmark(size, leaf_size, algo) else {
+                        return Err(io::Error::new(io::ErrorKind::InvalidInput, "size must be > 0"));
+                    };
+                    println!(
+                        "{} leaf {} B: {} leaves, build {:?} ({:.2} MiB/s), depth {}, proof {} B, verify {:?}",
+                        algo.name(),
+                        leaf_size,
+                        r.leaf_count,
+                        r.build,
+                        r.build_throughput_mib_s(),
+                        r.depth,
+                        r.proof_bytes(),
+                        r.verify
+                    );
+                }
             }
         }
         Command::Seq {

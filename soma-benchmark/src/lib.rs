@@ -1,5 +1,6 @@
 pub mod file;
 pub mod hash;
+pub mod merkle;
 pub mod random_read;
 pub mod report;
 pub mod seq;

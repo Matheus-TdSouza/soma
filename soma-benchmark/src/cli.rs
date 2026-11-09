@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use soma_benchmark::file::BENCHMARK_PATH;
 use soma_benchmark::hash::{HashAlgo, parse_algo};
+use soma_benchmark::merkle::{MerkleAlgo, parse_merkle_algo};
 use soma_benchmark::size::parse_size;
 use std::path::PathBuf;
 
@@ -46,6 +47,19 @@ pub enum Command {
         #[arg(value_parser = parse_algo_arg, help = "sha256, blake3 or blake3-mt; all three if omitted")]
         algo: Option<HashAlgo>,
     },
+    #[command(about = "Build a Merkle tree over an in-memory buffer and time proof verification")]
+    Merkle {
+        #[arg(value_parser = parse_size_arg)]
+        size: usize,
+        #[arg(
+            long,
+            value_parser = parse_leaf_size_arg,
+            help = "Leaf size in bytes; 32, 256, 1024 and 4096 if omitted"
+        )]
+        leaf_size: Option<usize>,
+        #[arg(long, value_parser = parse_merkle_algo_arg, help = "sha256 or blake3; both if omitted")]
+        algo: Option<MerkleAlgo>,
+    },
     #[command(about = "Read the whole file sequentially")]
     Seq {
         #[arg(value_parser = parse_size_arg)]
@@ -72,6 +86,17 @@ fn parse_size_arg(s: &str) -> Result<usize, String> {
 fn parse_algo_arg(s: &str) -> Result<HashAlgo, String> {
     parse_algo(s)
         .ok_or_else(|| format!("invalid algorithm '{s}', expected sha256, blake3 or blake3-mt"))
+}
+
+fn parse_leaf_size_arg(s: &str) -> Result<usize, String> {
+    match s.parse::<usize>() {
+        Ok(n) if n > 0 => Ok(n),
+        _ => Err(format!("invalid leaf size '{s}', expected a positive number of bytes")),
+    }
+}
+
+fn parse_merkle_algo_arg(s: &str) -> Result<MerkleAlgo, String> {
+    parse_merkle_algo(s).ok_or_else(|| format!("invalid algorithm '{s}', expected sha256 or blake3"))
 }
 
 fn parse_label_arg(s: &str) -> Result<String, String> {

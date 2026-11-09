@@ -74,10 +74,11 @@ fn meta_rows_have_empty_param_and_rep_zero() {
         timestamp_unix: 1_791_470_000,
         file_size_bytes: 1 << 30,
         hash_size_bytes: 1 << 30,
+        merkle_size_bytes: 256 << 20,
         reps: 3,
     };
     let rows = meta_rows(&meta);
-    assert_eq!(rows.len(), 8);
+    assert_eq!(rows.len(), 9);
     assert!(
         rows.iter()
             .all(|r| r.test == "meta" && r.param.is_empty() && r.rep == 0)
@@ -114,4 +115,27 @@ fn csv_writer_writes_header_then_rows() -> std::io::Result<()> {
     assert_eq!(lines[0], HEADER);
     assert!(lines[1].starts_with("pc-c,seq_direct,4096,1,runtime_us,"));
     Ok(())
+}
+
+#[test]
+fn merkle_rows_name_algo_and_leaf_size_in_param() {
+    use soma_benchmark::merkle::{MerkleAlgo, MerkleResult};
+    let r = MerkleResult {
+        algo: MerkleAlgo::Sha256,
+        leaf_size: 1024,
+        bytes: 1 << 20,
+        leaf_count: 1024,
+        build: Duration::from_millis(1),
+        depth: 10,
+        verify: Duration::from_micros(2),
+    };
+    let rows = soma_benchmark::report::merkle_rows(1, &r);
+    assert!(
+        rows.iter()
+            .all(|r| r.test == "merkle" && r.param == "sha256-1024" && r.rep == 1)
+    );
+    let value = |m: &str| rows.iter().find(|r| r.metric == m).unwrap().value.clone();
+    assert_eq!(value("build_throughput_mib_s"), "1000.000");
+    assert_eq!(value("proof_bytes"), "1344");
+    assert_eq!(value("verify_mean_us"), "2.000");
 }
