@@ -1,4 +1,4 @@
-use soma_merkle::{MerkleHasher, Sha256Hasher, Blake3Hasher};
+use soma_merkle::{Blake3Hasher, MerkleHasher, Sha256Hasher};
 
 fn assert_domains_disjoint<H: MerkleHasher>() {
     let a = [1u8; 32];
@@ -10,14 +10,21 @@ fn assert_domains_disjoint<H: MerkleHasher>() {
 }
 
 #[test]
-fn domains_disjoint_sha256() { assert_domains_disjoint::<Sha256Hasher>(); }
+fn domains_disjoint_sha256() {
+    assert_domains_disjoint::<Sha256Hasher>();
+}
 
 #[test]
-fn domains_disjoint_blake3() { assert_domains_disjoint::<Blake3Hasher>(); }
+fn domains_disjoint_blake3() {
+    assert_domains_disjoint::<Blake3Hasher>();
+}
 
 #[test]
 fn sha256_empty_leaf_matches_rfc6962() {
     let expected = "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d";
-    let got: String = Sha256Hasher::leaf(&[]).iter().map(|b| format!("{b:02x}")).collect();
+    let got: String = Sha256Hasher::leaf(&[])
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
     assert_eq!(got, expected);
 }

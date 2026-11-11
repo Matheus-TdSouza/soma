@@ -139,11 +139,26 @@ pub fn respond<H: MerkleHasher>(
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Rejection {
-    Late { elapsed: Duration, deadline: Duration },
-    WrongCount { expected: usize, got: usize },
-    NoSuchPosition { position: usize, k: usize },
-    WrongIndex { position: usize, expected: usize, got: usize },
-    InvalidProof { position: usize },
+    Late {
+        elapsed: Duration,
+        deadline: Duration,
+    },
+    WrongCount {
+        expected: usize,
+        got: usize,
+    },
+    NoSuchPosition {
+        position: usize,
+        k: usize,
+    },
+    WrongIndex {
+        position: usize,
+        expected: usize,
+        got: usize,
+    },
+    InvalidProof {
+        position: usize,
+    },
 }
 
 /// Checks that `response` answers exactly the leaves `challenge` picks, in
@@ -176,7 +191,10 @@ pub fn check_answer<H: MerkleHasher>(
 ) -> Result<(), Rejection> {
     let expected = challenge
         .index(commitment, position)
-        .ok_or(Rejection::NoSuchPosition { position, k: challenge.k })?;
+        .ok_or(Rejection::NoSuchPosition {
+            position,
+            k: challenge.k,
+        })?;
     check_index_and_proof::<H>(commitment, position, expected, answer)
 }
 

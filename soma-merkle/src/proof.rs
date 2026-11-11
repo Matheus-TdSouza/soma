@@ -12,11 +12,7 @@ pub struct Proof {
     pub siblings: Vec<[u8; 32]>,
 }
 
-pub fn verify<H: MerkleHasher>(
-    commitment: &Commitment,
-    leaf: &[u8],
-    proof: &Proof,
-) -> bool {
+pub fn verify<H: MerkleHasher>(commitment: &Commitment, leaf: &[u8], proof: &Proof) -> bool {
     if proof.index >= commitment.leaf_count {
         return false;
     }

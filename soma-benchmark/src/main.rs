@@ -48,7 +48,10 @@ fn main() -> io::Result<()> {
             for algo in algos {
                 for &leaf_size in &leaf_sizes {
                     let Some(r) = merkle_benchmark(size, leaf_size, algo) else {
-                        return Err(io::Error::new(io::ErrorKind::InvalidInput, "size must be > 0"));
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            "size must be > 0",
+                        ));
                     };
                     println!(
                         "{} leaf {} B: {} leaves, build {:?} ({:.2} MiB/s), depth {}, proof {} B, verify {:?}",
@@ -72,7 +75,8 @@ fn main() -> io::Result<()> {
             direct,
             algo,
         } => {
-            let run = challenge_benchmark(&path, leaf_size, k as usize, rounds as usize, direct, algo)?;
+            let run =
+                challenge_benchmark(&path, leaf_size, k as usize, rounds as usize, direct, algo)?;
             println!(
                 "Committed {} leaves of {} B in {:?}; response {} B per round",
                 run.leaf_count, leaf_size, run.build, run.response_bytes

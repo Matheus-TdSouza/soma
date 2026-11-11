@@ -1,7 +1,6 @@
 use soma_challenge::{
-    CONFIDENCE, Challenge, K, MISSING_FRACTION, ReadLatency, Rejection, Response,
-    challenge_count, check_answer, check_response, check_round, miss_probability, respond,
-    round_deadline,
+    CONFIDENCE, Challenge, K, MISSING_FRACTION, ReadLatency, Rejection, Response, challenge_count,
+    check_answer, check_response, check_round, miss_probability, respond, round_deadline,
 };
 use soma_merkle::{MerkleTree, Sha256Hasher};
 use std::io;
@@ -11,7 +10,9 @@ type H = Sha256Hasher;
 const LEAF_SIZE: usize = 16;
 
 fn data(leaves: usize) -> Vec<u8> {
-    (0..leaves * LEAF_SIZE).map(|b| (b * 7 + b / 251) as u8).collect()
+    (0..leaves * LEAF_SIZE)
+        .map(|b| (b * 7 + b / 251) as u8)
+        .collect()
 }
 
 fn leaf(data: &[u8], i: usize) -> io::Result<Vec<u8>> {
@@ -42,37 +43,67 @@ fn challenge_count_lands_on_exact_bounds() {
 
 #[test]
 fn challenge_count_rejects_out_of_range_inputs() {
-    for (f, c) in [(0.0, 0.99), (1.0, 0.99), (0.01, 0.0), (0.01, 1.0), (-0.1, 0.5), (f64::NAN, 0.5)] {
+    for (f, c) in [
+        (0.0, 0.99),
+        (1.0, 0.99),
+        (0.01, 0.0),
+        (0.01, 1.0),
+        (-0.1, 0.5),
+        (f64::NAN, 0.5),
+    ] {
         assert_eq!(challenge_count(f, c), None, "f={f} c={c}");
     }
 }
 
 #[test]
 fn indices_are_deterministic_in_range_and_depend_on_seed_and_root() {
-    let a = MerkleTree::<H>::build(&data(1000), LEAF_SIZE).unwrap().commitment();
+    let a = MerkleTree::<H>::build(&data(1000), LEAF_SIZE)
+        .unwrap()
+        .commitment();
     let mut other = data(1000);
     other[0] ^= 1;
-    let b = MerkleTree::<H>::build(&other, LEAF_SIZE).unwrap().commitment();
-    let c = Challenge { seed: seed(1), k: K };
+    let b = MerkleTree::<H>::build(&other, LEAF_SIZE)
+        .unwrap()
+        .commitment();
+    let c = Challenge {
+        seed: seed(1),
+        k: K,
+    };
 
     let ia = c.indices(&a);
     assert_eq!(ia.len(), K);
     assert!(ia.iter().all(|&i| i < 1000));
     assert_eq!(ia, c.indices(&a));
-    assert_ne!(ia, Challenge { seed: seed(2), k: K }.indices(&a));
+    assert_ne!(
+        ia,
+        Challenge {
+            seed: seed(2),
+            k: K
+        }
+        .indices(&a)
+    );
     assert_ne!(ia, c.indices(&b));
 }
 
 #[test]
 fn indices_are_roughly_uniform() {
-    let commitment = MerkleTree::<H>::build(&data(10), LEAF_SIZE).unwrap().commitment();
-    let draws = Challenge { seed: seed(7), k: 100_000 }.indices(&commitment);
+    let commitment = MerkleTree::<H>::build(&data(10), LEAF_SIZE)
+        .unwrap()
+        .commitment();
+    let draws = Challenge {
+        seed: seed(7),
+        k: 100_000,
+    }
+    .indices(&commitment);
     let mut counts = [0usize; 10];
     for i in draws {
         counts[i] += 1;
     }
     // Expected 10,000 per bucket, standard deviation ~95.
-    assert!(counts.iter().all(|&c| (9_500..=10_500).contains(&c)), "{counts:?}");
+    assert!(
+        counts.iter().all(|&c| (9_500..=10_500).contains(&c)),
+        "{counts:?}"
+    );
 }
 
 #[test]
@@ -80,10 +111,16 @@ fn honest_response_passes_for_every_tree_shape() {
     for leaves in 1..=9 {
         let data = data(leaves);
         let tree = MerkleTree::<H>::build(&data, LEAF_SIZE).unwrap();
-        let c = Challenge { seed: seed(leaves as u64), k: K };
+        let c = Challenge {
+            seed: seed(leaves as u64),
+            k: K,
+        };
         let response = respond(&tree, &c, |i| leaf(&data, i)).unwrap();
         assert_eq!(response.answers.len(), K);
-        assert_eq!(check_response::<H>(&tree.commitment(), &c, &response), Ok(()));
+        assert_eq!(
+            check_response::<H>(&tree.commitment(), &c, &response),
+            Ok(())
+        );
     }
 }
 
@@ -95,13 +132,20 @@ fn node_missing_one_percent_is_caught_about_99_percent_of_the_time() {
     let commitment = tree.commitment();
     // Deleted every 100th leaf and answers those with zeros.
     let cheat = |i: usize| -> io::Result<Vec<u8>> {
-        if i.is_multiple_of(100) { Ok(vec![0; LEAF_SIZE]) } else { leaf(&data, i) }
+        if i.is_multiple_of(100) {
+            Ok(vec![0; LEAF_SIZE])
+        } else {
+            leaf(&data, i)
+        }
     };
 
     let rounds = 300;
     let caught = (0..rounds)
         .filter(|&r| {
-            let c = Challenge { seed: seed(r), k: K };
+            let c = Challenge {
+                seed: seed(r),
+                k: K,
+            };
             let response = respond(&tree, &c, cheat).unwrap();
             matches!(
                 check_response::<H>(&commitment, &c, &response),
@@ -110,38 +154,56 @@ fn node_missing_one_percent_is_caught_about_99_percent_of_the_time() {
         })
         .count();
     // Expected ~297; escaping more than 12 times has probability < 1e-6.
-    assert!(caught >= rounds as usize - 12, "caught {caught} of {rounds}");
+    assert!(
+        caught >= rounds as usize - 12,
+        "caught {caught} of {rounds}"
+    );
 }
 
 fn honest(c: &Challenge) -> (soma_merkle::Commitment, Response) {
     let data = data(100);
     let tree = MerkleTree::<H>::build(&data, LEAF_SIZE).unwrap();
-    (tree.commitment(), respond(&tree, c, |i| leaf(&data, i)).unwrap())
+    (
+        tree.commitment(),
+        respond(&tree, c, |i| leaf(&data, i)).unwrap(),
+    )
 }
 
 #[test]
 fn missing_or_extra_answers_are_rejected() {
-    let c = Challenge { seed: seed(3), k: K };
+    let c = Challenge {
+        seed: seed(3),
+        k: K,
+    };
     let (commitment, response) = honest(&c);
 
     let mut short = response.clone();
     short.answers.pop();
     assert_eq!(
         check_response::<H>(&commitment, &c, &short),
-        Err(Rejection::WrongCount { expected: K, got: K - 1 })
+        Err(Rejection::WrongCount {
+            expected: K,
+            got: K - 1
+        })
     );
 
     let mut long = response.clone();
     long.answers.push(response.answers[0].clone());
     assert_eq!(
         check_response::<H>(&commitment, &c, &long),
-        Err(Rejection::WrongCount { expected: K, got: K + 1 })
+        Err(Rejection::WrongCount {
+            expected: K,
+            got: K + 1
+        })
     );
 }
 
 #[test]
 fn answer_for_a_leaf_that_was_not_asked_is_rejected() {
-    let c = Challenge { seed: seed(4), k: K };
+    let c = Challenge {
+        seed: seed(4),
+        k: K,
+    };
     let (commitment, response) = honest(&c);
     let position = (0..K)
         .find(|&p| response.answers[p].proof.index != response.answers[0].proof.index)
@@ -162,21 +224,33 @@ fn answer_for_a_leaf_that_was_not_asked_is_rejected() {
 
 #[test]
 fn late_response_is_rejected_even_if_correct() {
-    let c = Challenge { seed: seed(5), k: K };
+    let c = Challenge {
+        seed: seed(5),
+        k: K,
+    };
     let (commitment, response) = honest(&c);
     let deadline = Duration::from_millis(53);
 
-    assert_eq!(check_round::<H>(&commitment, &c, &response, deadline, deadline), Ok(()));
+    assert_eq!(
+        check_round::<H>(&commitment, &c, &response, deadline, deadline),
+        Ok(())
+    );
     let late = deadline + Duration::from_nanos(1);
     assert_eq!(
         check_round::<H>(&commitment, &c, &response, late, deadline),
-        Err(Rejection::Late { elapsed: late, deadline })
+        Err(Rejection::Late {
+            elapsed: late,
+            deadline
+        })
     );
 }
 
 #[test]
 fn response_size_counts_leaves_and_siblings() {
-    let c = Challenge { seed: seed(6), k: K };
+    let c = Challenge {
+        seed: seed(6),
+        k: K,
+    };
     let (_, response) = honest(&c);
     // 100 leaves pad to 128: 7 siblings per proof.
     assert_eq!(response.size_bytes(), K * (LEAF_SIZE + 32 * 7));
@@ -185,15 +259,31 @@ fn response_size_counts_leaves_and_siblings() {
 #[test]
 fn round_deadline_matches_measured_d01_latencies() {
     // docs/benchmarks.md, random 4 KiB reads.
-    let nvme = ReadLatency { mean: Duration::from_micros(115), std_dev: Duration::from_micros(29) };
-    let hdd = ReadLatency { mean: Duration::from_micros(9_011), std_dev: Duration::from_micros(2_661) };
+    let nvme = ReadLatency {
+        mean: Duration::from_micros(115),
+        std_dev: Duration::from_micros(29),
+    };
+    let hdd = ReadLatency {
+        mean: Duration::from_micros(9_011),
+        std_dev: Duration::from_micros(2_661),
+    };
 
-    assert_eq!(round_deadline(K, nvme, 0.0, Duration::ZERO), Duration::from_micros(52_785));
-    assert_eq!(round_deadline(K, hdd, 0.0, Duration::ZERO), Duration::from_micros(4_136_049));
+    assert_eq!(
+        round_deadline(K, nvme, 0.0, Duration::ZERO),
+        Duration::from_micros(52_785)
+    );
+    assert_eq!(
+        round_deadline(K, hdd, 0.0, Duration::ZERO),
+        Duration::from_micros(4_136_049)
+    );
 
     // z = 2 reproduces the ± column: 2·√459·29 µs ≈ 1.24 ms.
-    let spread = round_deadline(K, nvme, 2.0, Duration::ZERO) - round_deadline(K, nvme, 0.0, Duration::ZERO);
-    assert!(spread > Duration::from_micros(1_240) && spread < Duration::from_micros(1_245), "{spread:?}");
+    let spread =
+        round_deadline(K, nvme, 2.0, Duration::ZERO) - round_deadline(K, nvme, 0.0, Duration::ZERO);
+    assert!(
+        spread > Duration::from_micros(1_240) && spread < Duration::from_micros(1_245),
+        "{spread:?}"
+    );
 
     let overhead = Duration::from_millis(100);
     assert_eq!(
@@ -204,27 +294,41 @@ fn round_deadline_matches_measured_d01_latencies() {
 
 #[test]
 fn challenge_count_matches_table_in_docs() {
-    for (f, c, k) in [(0.01, 0.99, 459), (0.01, 0.999, 688), (0.05, 0.99, 90), (0.001, 0.99, 4_603)] {
+    for (f, c, k) in [
+        (0.01, 0.99, 459),
+        (0.01, 0.999, 688),
+        (0.05, 0.99, 90),
+        (0.001, 0.99, 4_603),
+    ] {
         assert_eq!(challenge_count(f, c), Some(k), "f={f} c={c}");
     }
 }
 
 #[test]
 fn index_matches_indices_and_rejects_missing_positions() {
-    let c = Challenge { seed: seed(8), k: K };
+    let c = Challenge {
+        seed: seed(8),
+        k: K,
+    };
     let (commitment, _) = honest(&c);
     let all = c.indices(&commitment);
     for (position, &i) in all.iter().enumerate() {
         assert_eq!(c.index(&commitment, position), Some(i));
     }
     assert_eq!(c.index(&commitment, K), None);
-    let empty = soma_merkle::Commitment { root: [0; 32], leaf_count: 0 };
+    let empty = soma_merkle::Commitment {
+        root: [0; 32],
+        leaf_count: 0,
+    };
     assert_eq!(c.index(&empty, 0), None);
 }
 
 #[test]
 fn contested_answer_is_checked_on_its_own() {
-    let c = Challenge { seed: seed(9), k: K };
+    let c = Challenge {
+        seed: seed(9),
+        k: K,
+    };
     let (commitment, response) = honest(&c);
 
     for (position, answer) in response.answers.iter().enumerate() {
@@ -240,7 +344,9 @@ fn contested_answer_is_checked_on_its_own() {
     );
 
     // A valid answer for another position does not settle this one.
-    let other = (0..K).find(|&p| response.answers[p].proof.index != answer.proof.index).unwrap();
+    let other = (0..K)
+        .find(|&p| response.answers[p].proof.index != answer.proof.index)
+        .unwrap();
     assert!(matches!(
         check_answer::<H>(&commitment, &c, other, answer),
         Err(Rejection::WrongIndex { .. })
@@ -255,7 +361,10 @@ fn contested_answer_is_checked_on_its_own() {
 #[test]
 fn dispute_carries_one_proof_of_about_a_kilobyte() {
     // 100 leaves of 16 B: 7 siblings.
-    let c = Challenge { seed: seed(10), k: K };
+    let c = Challenge {
+        seed: seed(10),
+        k: K,
+    };
     let (_, response) = honest(&c);
     assert_eq!(response.answers[0].size_bytes(), LEAF_SIZE + 32 * 7);
 }

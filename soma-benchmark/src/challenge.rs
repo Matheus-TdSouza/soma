@@ -19,7 +19,11 @@ pub struct LeafReader {
 
 impl LeafReader {
     pub fn open(path: &Path, leaf_size: usize, direct: bool) -> io::Result<Self> {
-        let file = if direct { open_direct(path)? } else { File::open(path)? };
+        let file = if direct {
+            open_direct(path)?
+        } else {
+            File::open(path)?
+        };
         let file_len = file.metadata()?.len();
         // A leaf can straddle one more block than its size alone needs.
         let max_read = (leaf_size + SECTOR_ALIGN - 1).div_ceil(SECTOR_ALIGN) * SECTOR_ALIGN;
@@ -35,7 +39,10 @@ impl LeafReader {
         let start = i as u64 * self.leaf_size as u64;
         let end = (start + self.leaf_size as u64).min(self.file_len);
         if start >= end {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "leaf index past end of file"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "leaf index past end of file",
+            ));
         }
         let block_start = start / SECTOR_ALIGN as u64 * SECTOR_ALIGN as u64;
         let span = (end - block_start) as usize;
@@ -88,8 +95,9 @@ fn run<H: MerkleHasher>(
     direct: bool,
 ) -> io::Result<ChallengeRun> {
     let start = Instant::now();
-    let tree = MerkleTree::<H>::build_reader(File::open(path)?, leaf_size)?
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "empty file or zero leaf size"))?;
+    let tree = MerkleTree::<H>::build_reader(File::open(path)?, leaf_size)?.ok_or_else(|| {
+        io::Error::new(io::ErrorKind::InvalidInput, "empty file or zero leaf size")
+    })?;
     let build = start.elapsed();
     let commitment = tree.commitment();
 
