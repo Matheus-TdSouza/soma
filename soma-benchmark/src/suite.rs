@@ -82,7 +82,13 @@ fn measure(csv: &mut CsvWriter, path: &Path, reps: u32) -> io::Result<()> {
 
         for algo in MerkleAlgo::ALL {
             for leaf_size in LEAF_SIZES {
-                eprintln!("[{}/{}] merkle {} leaf {} bytes", rep, reps, algo.name(), leaf_size);
+                eprintln!(
+                    "[{}/{}] merkle {} leaf {} bytes",
+                    rep,
+                    reps,
+                    algo.name(),
+                    leaf_size
+                );
                 let r = merkle_benchmark(MERKLE_SIZE, leaf_size, algo).expect("non-empty input");
                 csv.write(&merkle_rows(rep, &r))?;
             }

@@ -361,7 +361,17 @@ version = "0.1.0"
 dependencies = [
  "blake3",
  "clap",
+ "libc",
  "rand",
+ "sha2",
+ "soma-challenge",
+ "soma-merkle",
+]
+
+[[package]]
+name = "soma-challenge"
+version = "0.1.0"
+dependencies = [
  "sha2",
  "soma-merkle",
 ]

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["soma-benchmark", "soma-merkle"]
+members = ["soma-benchmark", "soma-challenge", "soma-merkle"]
 
 [workspace.dependencies]
 blake3 = "1.8.7"

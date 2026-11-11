@@ -3,10 +3,11 @@ mod suite;
 
 use clap::Parser;
 use cli::{Cli, Command};
+use soma_benchmark::challenge::challenge_benchmark;
 use soma_benchmark::file::generate;
 use soma_benchmark::hash::hash_benchmark;
 use soma_benchmark::merkle::{LEAF_SIZES, MerkleAlgo, merkle_benchmark};
-use soma_benchmark::random_read::rand_benchmark;
+use soma_benchmark::random_read::rand_qd_benchmark;
 use soma_benchmark::seq::seq_benchmark;
 use soma_benchmark::stats::latency_stats;
 use std::io;
@@ -47,7 +48,10 @@ fn main() -> io::Result<()> {
             for algo in algos {
                 for &leaf_size in &leaf_sizes {
                     let Some(r) = merkle_benchmark(size, leaf_size, algo) else {
-                        return Err(io::Error::new(io::ErrorKind::InvalidInput, "size must be > 0"));
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            "size must be > 0",
+                        ));
                     };
                     println!(
                         "{} leaf {} B: {} leaves, build {:?} ({:.2} MiB/s), depth {}, proof {} B, verify {:?}",
@@ -63,6 +67,24 @@ fn main() -> io::Result<()> {
                 }
             }
         }
+        Command::Challenge {
+            path,
+            leaf_size,
+            k,
+            rounds,
+            direct,
+            algo,
+        } => {
+            let run =
+                challenge_benchmark(&path, leaf_size, k as usize, rounds as usize, direct, algo)?;
+            println!(
+                "Committed {} leaves of {} B in {:?}; response {} B per round",
+                run.leaf_count, leaf_size, run.build, run.response_bytes
+            );
+            for (i, t) in run.rounds.iter().enumerate() {
+                println!("Round {}: {:?} ({:?} per challenge)", i + 1, t, *t / k);
+            }
+        }
         Command::Seq {
             buf_size,
             direct,
@@ -73,16 +95,23 @@ fn main() -> io::Result<()> {
             println!("Runtime: {:?}", result.runtime);
             println!("Throughput: {:.2} MiB/s", result.throughput_mib_s());
         }
-        Command::Rand { n, direct, path } => {
-            let mut durations = rand_benchmark(&path, n, direct)?;
-            let s = latency_stats(&mut durations);
+        Command::Rand {
+            n,
+            direct,
+            qd,
+            path,
+        } => {
+            let mut run = rand_qd_benchmark(&path, n, qd as usize, direct)?;
+            let iops = run.iops();
+            let s = latency_stats(&mut run.latencies);
+            println!("Queue depth: {}", qd);
             println!("p50: {:?}", s.p50);
             println!("p90: {:?}", s.p90);
             println!("p99: {:?}", s.p99);
             println!("Max: {:?}", s.max);
             println!("Average: {:?}", s.mean);
             println!("Std dev: {:?}", s.std_dev);
-            println!("IOPS: {:.2}", s.iops);
+            println!("IOPS: {:.2}", iops);
         }
     }
     Ok(())

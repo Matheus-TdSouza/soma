@@ -89,7 +89,10 @@ fn run<H: MerkleHasher>(data: &[u8], leaf_size: usize, algo: MerkleAlgo) -> Opti
 
     let start = Instant::now();
     for (leaf, proof) in &challenges {
-        assert!(verify::<H>(&commitment, leaf, proof), "honest proof rejected");
+        assert!(
+            verify::<H>(&commitment, leaf, proof),
+            "honest proof rejected"
+        );
     }
     let verify = start.elapsed().div_f64(VERIFY_SAMPLES as f64);
 

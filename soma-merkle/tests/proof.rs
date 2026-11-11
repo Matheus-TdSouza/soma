@@ -58,7 +58,10 @@ fn tampered_sibling<H: MerkleHasher>() {
             for s in 0..proof.siblings.len() {
                 let mut bad = proof.clone();
                 bad.siblings[s][0] ^= 1;
-                assert!(!verify::<H>(&c, leaf(&data, i), &bad), "n={n} i={i} sibling={s}");
+                assert!(
+                    !verify::<H>(&c, leaf(&data, i), &bad),
+                    "n={n} i={i} sibling={s}"
+                );
             }
         }
     }
@@ -74,8 +77,14 @@ fn proof_checked_as_other_index<H: MerkleHasher>() {
             for j in (0..n).filter(|&j| j != i) {
                 let mut moved = proof.clone();
                 moved.index = j;
-                assert!(!verify::<H>(&c, leaf(&data, i), &moved), "n={n} i={i} as j={j}, leaf i");
-                assert!(!verify::<H>(&c, leaf(&data, j), &moved), "n={n} i={i} as j={j}, leaf j");
+                assert!(
+                    !verify::<H>(&c, leaf(&data, i), &moved),
+                    "n={n} i={i} as j={j}, leaf i"
+                );
+                assert!(
+                    !verify::<H>(&c, leaf(&data, j), &moved),
+                    "n={n} i={i} as j={j}, leaf j"
+                );
             }
         }
     }
@@ -95,7 +104,10 @@ fn index_out_of_range<H: MerkleHasher>() {
         for index in (n..=padded).chain([n - 1 + padded, usize::MAX]) {
             let mut bad = proof.clone();
             bad.index = index;
-            assert!(!verify::<H>(&c, leaf(&data, n - 1), &bad), "n={n} index={index}");
+            assert!(
+                !verify::<H>(&c, leaf(&data, n - 1), &bad),
+                "n={n} index={index}"
+            );
         }
     }
 }
@@ -110,12 +122,18 @@ fn wrong_path_length<H: MerkleHasher>() {
 
             let mut longer = proof.clone();
             longer.siblings.push([0u8; 32]);
-            assert!(!verify::<H>(&c, leaf(&data, i), &longer), "n={n} i={i} extra");
+            assert!(
+                !verify::<H>(&c, leaf(&data, i), &longer),
+                "n={n} i={i} extra"
+            );
 
             if !proof.siblings.is_empty() {
                 let mut shorter = proof.clone();
                 shorter.siblings.pop();
-                assert!(!verify::<H>(&c, leaf(&data, i), &shorter), "n={n} i={i} missing");
+                assert!(
+                    !verify::<H>(&c, leaf(&data, i), &shorter),
+                    "n={n} i={i} missing"
+                );
             }
         }
     }
@@ -152,7 +170,11 @@ impl MerkleHasher for NoDomainHasher {
 
     fn node(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
         use sha2::{Digest, Sha256};
-        Sha256::new().chain_update(left).chain_update(right).finalize().into()
+        Sha256::new()
+            .chain_update(left)
+            .chain_update(right)
+            .finalize()
+            .into()
     }
 }
 
@@ -201,12 +223,22 @@ fn build_reader_matches_build() {
     // Input larger than one 8 MiB read block, not a multiple of it.
     let big: Vec<u8> = (0..(9 << 20) + 5).map(|b: usize| b as u8).collect();
     let a = MerkleTree::<Blake3Hasher>::build(&big, 1024).unwrap();
-    let b = MerkleTree::<Blake3Hasher>::build_reader(&big[..], 1024).unwrap().unwrap();
+    let b = MerkleTree::<Blake3Hasher>::build_reader(&big[..], 1024)
+        .unwrap()
+        .unwrap();
     assert_eq!(a.commitment(), b.commitment());
 }
 
 #[test]
 fn build_reader_rejects_empty_and_zero_leaf_size() {
-    assert!(MerkleTree::<Sha256Hasher>::build_reader(&b""[..], 4).unwrap().is_none());
-    assert!(MerkleTree::<Sha256Hasher>::build_reader(&b"abc"[..], 0).unwrap().is_none());
+    assert!(
+        MerkleTree::<Sha256Hasher>::build_reader(&b""[..], 4)
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        MerkleTree::<Sha256Hasher>::build_reader(&b"abc"[..], 0)
+            .unwrap()
+            .is_none()
+    );
 }

@@ -3,14 +3,15 @@
 A decentralized storage network where nodes prove they still hold the data they were paid to store.
 Each file is committed to a Merkle root; nodes answer random challenges with chunks and Merkle paths, and a smart contract verifies the answers.
 
-Current stage: disk read and hashing benchmarks, used to size the cost of answering challenges.
+Current stage: the challenge protocol (`docs/challenge.md`), sized by the disk and hashing benchmarks.
 
 ## Layout
 
 - `soma-benchmark/`: disk read and hashing benchmarks.
   - `src/main.rs`, `src/cli.rs`: command line (clap).
-  - `src/lib.rs`: library modules (`file`, `seq`, `random_read`, `hash`, `merkle`, `stats`, `size`).
+  - `src/lib.rs`: library modules (`file`, `seq`, `random_read`, `hash`, `merkle`, `challenge`, `stats`, `size`).
   - `tests/`: tests against the library's public API.
+- `soma-challenge/`: challenge protocol: index derivation from a seed, `k` from the target detection rate, prover `respond`, verifier `check_round` and `round_deadline`. Specified in `docs/challenge.md`.
 - `soma-merkle/`: Merkle tree over fixed-size leaves (`build`, `build_reader`), proofs (`prove`) and `verify`. SHA-256 and BLAKE3 with 0x00/0x01 domain separation; the tree is padded to a power of two with zero hashes.
 
 ## Running
@@ -27,9 +28,10 @@ From inside `soma-benchmark/`, `-p soma-benchmark` can be dropped. Use `--help` 
 |---|---|
 | `generate <size> [--path P]` | Writes a file of random bytes to benchmark against, e.g. `generate 1G` |
 | `seq <buffer_size> [--direct] [--path P]` | Sequential read of the whole file: bytes, time and MiB/s |
-| `rand <n> [--direct] [--path P]` | `n` random 4 KiB reads: p50, p90, p99, max, mean, standard deviation and IOPS |
+| `rand <n> [--direct] [--qd N] [--path P]` | `n` random 4 KiB reads with up to `N` in flight (default 1, one thread each): p50, p90, p99, max, mean, standard deviation and IOPS over wall-clock time |
 | `hash <size> [sha256\|blake3\|blake3-mt]` | Hash throughput over an in-memory buffer; runs all three algorithms when none is given |
 | `merkle <size> [--leaf-size BYTES] [--algo sha256\|blake3]` | Merkle tree build time over an in-memory buffer, proof size and mean verify time; runs leaf sizes 32, 256, 1024 and 4096 and both hashers when not given |
+| `challenge [--path P] [--leaf-size BYTES] [--k K] [--rounds N] [--direct] [--algo A]` | Commits to the file, then answers `N` challenge rounds of `K` random leaves (default 459) from disk and checks each response; prints the time per round |
 | `suite --label L [--path P] [--size S] [--reps N] [--out F] [--keep]` | Runs everything above on one drive and writes the results to a CSV file |
 
 Sizes take a `K`, `M` or `G` suffix (`4K`, `1M`, `2G`). `--path` defaults to `benchmark.bin` in the current directory.
@@ -44,7 +46,7 @@ cargo run --release -p soma-benchmark -- rand 10000 --direct --path E:/bench.bin
 
 ## Collecting results
 
-`suite` is the command to run on each machine and drive. It creates the benchmark file, runs `seq --direct` over the first 1 GiB with 4 KiB, 64 KiB, 1 MiB and 8 MiB buffers, `rand --direct` with 10,000 reads all three hashes over 1 GiB and `merkle` over 256 MiB for every leaf size and hasher, repeats everything `--reps` times (default 3), deletes the benchmark file and leaves one CSV behind:
+`suite` is the command to run on each machine and drive. It creates the benchmark file, runs `seq --direct` over the first 1 GiB with 4 KiB, 64 KiB, 1 MiB and 8 MiB buffers, `rand --direct` with 10,000 reads, all three hashes over 1 GiB and `merkle` over 256 MiB for every leaf size and hasher, repeats everything `--reps` times (default 3), deletes the benchmark file and leaves one CSV behind:
 
 ```
 cargo run --release -p soma-benchmark -- suite --label D01-hdd1 --path E:/bench.bin --size 100G --out D01-hdd1.csv
@@ -58,7 +60,7 @@ cargo run --release -p soma-benchmark -- suite --label D01-hdd1 --path E:/bench.
 
 ## Notes on measuring
 
-- **Use `--direct` for disk numbers.** Without it, reads may be served from the operating system's page cache and measure RAM instead of the disk. `--direct` bypasses the cache and is currently implemented on Windows only. Buffer sizes must be multiples of 4 KiB.
+- **Use `--direct` for disk numbers.** Without it, reads may be served from the operating system's page cache and measure RAM instead of the disk. `--direct` bypasses the cache and is implemented on Windows (`FILE_FLAG_NO_BUFFERING`) and Linux (`O_DIRECT`); other systems return an error. Buffer sizes must be multiples of 4 KiB. On Linux the file must be on a filesystem that supports `O_DIRECT` (ext4, xfs, btrfs; not tmpfs).
 - **Git Bash paths.** Bash treats `\` as an escape character, so `E:\bench.bin` reaches the program as `E:bench.bin`. Use forward slashes (`E:/bench.bin`) or quote the path.
 - **Hard drives need large files.** A small file sits in a narrow band of the platter, so random reads barely move the head and latency comes out optimistic. Use a file that covers a large share of the disk for realistic random read numbers.
 - **Clean up.** Benchmark files can be large. They are ignored by git (`*.bin`) but stay on disk until deleted.

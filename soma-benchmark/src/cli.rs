@@ -1,8 +1,9 @@
 use clap::{Parser, Subcommand};
 use soma_benchmark::file::BENCHMARK_PATH;
 use soma_benchmark::hash::{HashAlgo, parse_algo};
-use soma_benchmark::merkle::{MerkleAlgo, parse_merkle_algo};
+use soma_benchmark::merkle::{DEFAULT_LEAF_SIZE, MerkleAlgo, parse_merkle_algo};
 use soma_benchmark::size::parse_size;
+use soma_challenge::K;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -60,6 +61,23 @@ pub enum Command {
         #[arg(long, value_parser = parse_merkle_algo_arg, help = "sha256 or blake3; both if omitted")]
         algo: Option<MerkleAlgo>,
     },
+    #[command(
+        about = "Commit to a file, then answer challenge rounds of k random leaves from disk"
+    )]
+    Challenge {
+        #[arg(long, default_value = BENCHMARK_PATH)]
+        path: PathBuf,
+        #[arg(long, value_parser = parse_leaf_size_arg, default_value_t = DEFAULT_LEAF_SIZE, help = "Leaf size in bytes")]
+        leaf_size: usize,
+        #[arg(long, default_value_t = K as u32, value_parser = clap::value_parser!(u32).range(1..), help = "Challenges per round")]
+        k: u32,
+        #[arg(long, default_value_t = 5, value_parser = clap::value_parser!(u32).range(1..))]
+        rounds: u32,
+        #[arg(long)]
+        direct: bool,
+        #[arg(long, value_parser = parse_merkle_algo_arg, default_value = "sha256", help = "sha256 or blake3")]
+        algo: MerkleAlgo,
+    },
     #[command(about = "Read the whole file sequentially")]
     Seq {
         #[arg(value_parser = parse_size_arg)]
@@ -74,6 +92,8 @@ pub enum Command {
         n: usize,
         #[arg(long)]
         direct: bool,
+        #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..), help = "Reads in flight (one thread each)")]
+        qd: u32,
         #[arg(long, default_value = BENCHMARK_PATH)]
         path: PathBuf,
     },
@@ -91,12 +111,15 @@ fn parse_algo_arg(s: &str) -> Result<HashAlgo, String> {
 fn parse_leaf_size_arg(s: &str) -> Result<usize, String> {
     match s.parse::<usize>() {
         Ok(n) if n > 0 => Ok(n),
-        _ => Err(format!("invalid leaf size '{s}', expected a positive number of bytes")),
+        _ => Err(format!(
+            "invalid leaf size '{s}', expected a positive number of bytes"
+        )),
     }
 }
 
 fn parse_merkle_algo_arg(s: &str) -> Result<MerkleAlgo, String> {
-    parse_merkle_algo(s).ok_or_else(|| format!("invalid algorithm '{s}', expected sha256 or blake3"))
+    parse_merkle_algo(s)
+        .ok_or_else(|| format!("invalid algorithm '{s}', expected sha256 or blake3"))
 }
 
 fn parse_label_arg(s: &str) -> Result<String, String> {

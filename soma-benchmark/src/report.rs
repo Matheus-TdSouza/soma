@@ -98,7 +98,10 @@ pub fn hash_rows(rep: u32, r: &HashResult) -> Vec<Row> {
 pub fn merkle_rows(rep: u32, r: &MerkleResult) -> Vec<Row> {
     let metrics = [
         ("build_runtime_us", format!("{:.3}", us(r.build))),
-        ("build_throughput_mib_s", format!("{:.3}", r.build_throughput_mib_s())),
+        (
+            "build_throughput_mib_s",
+            format!("{:.3}", r.build_throughput_mib_s()),
+        ),
         ("leaf_count", r.leaf_count.to_string()),
         ("depth", r.depth.to_string()),
         ("proof_bytes", r.proof_bytes().to_string()),

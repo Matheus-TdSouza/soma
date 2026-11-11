@@ -38,10 +38,24 @@ pub(crate) fn open_direct(path: &Path) -> io::Result<File> {
     Ok(file)
 }
 
-#[cfg(not(windows))]
+/// O_DIRECT bypasses the page cache. Like FILE_FLAG_NO_BUFFERING it needs the
+/// buffer, offset and length aligned to the logical block size; SECTOR_ALIGN
+/// (4 KiB) covers both 512 B and 4 KiB sectors. Some filesystems (tmpfs) reject
+/// it at open time.
+#[cfg(target_os = "linux")]
+pub(crate) fn open_direct(path: &Path) -> io::Result<File> {
+    use std::fs::OpenOptions;
+    use std::os::unix::fs::OpenOptionsExt;
+    OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_DIRECT)
+        .open(path)
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
 pub(crate) fn open_direct(_path: &Path) -> io::Result<File> {
     Err(io::Error::new(
         io::ErrorKind::Unsupported,
-        "direct I/O only implemented on Windows",
+        "direct I/O only implemented on Windows and Linux",
     ))
 }
