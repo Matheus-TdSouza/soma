@@ -28,7 +28,7 @@ From inside `soma-benchmark/`, `-p soma-benchmark` can be dropped. Use `--help` 
 |---|---|
 | `generate <size> [--path P]` | Writes a file of random bytes to benchmark against, e.g. `generate 1G` |
 | `seq <buffer_size> [--direct] [--path P]` | Sequential read of the whole file: bytes, time and MiB/s |
-| `rand <n> [--direct] [--path P]` | `n` random 4 KiB reads: p50, p90, p99, max, mean, standard deviation and IOPS |
+| `rand <n> [--direct] [--qd N] [--path P]` | `n` random 4 KiB reads with up to `N` in flight (default 1, one thread each): p50, p90, p99, max, mean, standard deviation and IOPS over wall-clock time |
 | `hash <size> [sha256\|blake3\|blake3-mt]` | Hash throughput over an in-memory buffer; runs all three algorithms when none is given |
 | `merkle <size> [--leaf-size BYTES] [--algo sha256\|blake3]` | Merkle tree build time over an in-memory buffer, proof size and mean verify time; runs leaf sizes 32, 256, 1024 and 4096 and both hashers when not given |
 | `challenge [--path P] [--leaf-size BYTES] [--k K] [--rounds N] [--direct] [--algo A]` | Commits to the file, then answers `N` challenge rounds of `K` random leaves (default 459) from disk and checks each response; prints the time per round |

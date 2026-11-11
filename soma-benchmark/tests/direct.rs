@@ -32,6 +32,17 @@ fn rand_direct_reads_aligned_blocks() -> std::io::Result<()> {
 }
 
 #[test]
+fn rand_qd_direct_reads_from_every_thread() -> std::io::Result<()> {
+    use soma_benchmark::random_read::rand_qd_benchmark;
+    let p = path("soma_rand_qd_direct.bin");
+    generate(&p, 64 * 4096)?;
+    let result = rand_qd_benchmark(&p, 101, 8, true);
+    std::fs::remove_file(&p)?;
+    assert_eq!(result?.latencies.len(), 101);
+    Ok(())
+}
+
+#[test]
 fn leaf_reader_direct_matches_file_contents() -> std::io::Result<()> {
     use soma_benchmark::challenge::LeafReader;
     let p = path("soma_leaf_reader_direct.bin");

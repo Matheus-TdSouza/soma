@@ -7,7 +7,7 @@ use soma_benchmark::challenge::challenge_benchmark;
 use soma_benchmark::file::generate;
 use soma_benchmark::hash::hash_benchmark;
 use soma_benchmark::merkle::{LEAF_SIZES, MerkleAlgo, merkle_benchmark};
-use soma_benchmark::random_read::rand_benchmark;
+use soma_benchmark::random_read::rand_qd_benchmark;
 use soma_benchmark::seq::seq_benchmark;
 use soma_benchmark::stats::latency_stats;
 use std::io;
@@ -95,16 +95,23 @@ fn main() -> io::Result<()> {
             println!("Runtime: {:?}", result.runtime);
             println!("Throughput: {:.2} MiB/s", result.throughput_mib_s());
         }
-        Command::Rand { n, direct, path } => {
-            let mut durations = rand_benchmark(&path, n, direct)?;
-            let s = latency_stats(&mut durations);
+        Command::Rand {
+            n,
+            direct,
+            qd,
+            path,
+        } => {
+            let mut run = rand_qd_benchmark(&path, n, qd as usize, direct)?;
+            let iops = run.iops();
+            let s = latency_stats(&mut run.latencies);
+            println!("Queue depth: {}", qd);
             println!("p50: {:?}", s.p50);
             println!("p90: {:?}", s.p90);
             println!("p99: {:?}", s.p99);
             println!("Max: {:?}", s.max);
             println!("Average: {:?}", s.mean);
             println!("Std dev: {:?}", s.std_dev);
-            println!("IOPS: {:.2}", s.iops);
+            println!("IOPS: {:.2}", iops);
         }
     }
     Ok(())

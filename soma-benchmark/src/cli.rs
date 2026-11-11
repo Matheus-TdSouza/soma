@@ -92,6 +92,8 @@ pub enum Command {
         n: usize,
         #[arg(long)]
         direct: bool,
+        #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..), help = "Reads in flight (one thread each)")]
+        qd: u32,
         #[arg(long, default_value = BENCHMARK_PATH)]
         path: PathBuf,
     },
